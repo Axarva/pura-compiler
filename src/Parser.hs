@@ -1,121 +1,130 @@
--- src/Parser.hs
-module Parser (pProgram, parsePura) where
+module Parser where
 
+import qualified Lexer as L
 import AST
-import Token
-import Data.Text (Text)
-import Data.Set (Set, fromList)
 import Text.Megaparsec
-import Control.Monad (void)
+import Text.Megaparsec.Char
+import Data.Void
+import Control.Monad
+import Data.Maybe ( fromMaybe )
 
--- Helper for parsing specific tokens
-t :: Token -> Parser Token
-t expected = satisfy (== expected) <?> show expected
+type Parser = Parsec Void [L.Token]
 
--- Parser for a generic identifier (from Token.hs)
-pIdentifier :: Parser Text
-pIdentifier = do
-  TIdentifier name <- satisfy isIdentifierToken <?> "identifier"
-  pure name
-  where isIdentifierToken (TIdentifier _) = True
-        isIdentifierToken _ = False
+parseLet :: Parser String
+parseLet = do
+  _ <- single L.TokLet
+  L.TokIdentifier name <- satisfy isIdentifier
+  _ <- single L.TokEquals
+  return name
 
--- Parser for a string literal
-pString :: Parser Text
-pString = do
-  TString s <- satisfy isStringToken <?> "string literal"
-  pure s
-  where isStringToken (TString _) = True
-        isStringToken _ = False
+parseParams :: Parser [String]
+parseParams = do
+  _ <- single L.TokLParen
+  params <- parseParamNames
+  _ <- single L.TokRParen
+  return params
 
--- Parser for an integer literal
-pInt :: Parser Int
-pInt = do
-  TInt i <- satisfy isIntToken <?> "integer literal"
-  pure i
-  where isIntToken (TInt _) = True
-        isIntToken _ = False
+parseParamNames :: Parser [String]
+parseParamNames = parseParamName `sepBy` single L.TokComma
 
--- Parser for an effect name
-pEffectName :: Parser Effect
-pEffectName = do
-  TEffectName name <- satisfy isEffectNameToken <?> "effect name"
-  case name of
-    "ConsoleWrite" -> pure ConsoleWrite
-    "RandomGen"    -> pure RandomGen
-    "FilesystemIO" -> pure FilesystemIO
-    _              -> customFailure $ "Unknown effect name: " ++ show name
-  where isEffectNameToken (TEffectName _) = True
-        isEffectNameToken _ = False
+parseParamName :: Parser String
+parseParamName = do
+  L.TokIdentifier name <- satisfy isIdentifier
+  return name
 
--- Parser for a list of effects in a REQUIRES clause
-pRequiresClause :: Parser (Set Effect)
-pRequiresClause = do
-  void (t TRequires)
-  effectNames <- sepBy1 pEffectName (t TComma)
-  pure $ fromList effectNames
+parseArrow :: Parser ()
+parseArrow = void (single L.TokArrow)
 
--- Parser for a single expression
-pExpr :: Parser Expr
-pExpr = pBinOpConcat
+isIdentifier :: L.Token -> Bool
+isIdentifier (L.TokIdentifier _) = True
+isIdentifier _ = False
 
-pBinOpConcat :: Parser Expr
-pBinOpConcat = do
-  expr <- pTerm
-  optional (do
-    void (t TPlusPlus)
-    EBinOp Concat expr <$> pBinOpConcat)
-    <|> pure expr
+parseStringLiteral :: Parser Expr
+parseStringLiteral = do
+  L.TokStringLiteral s <- satisfy isStringLiteral
+  return (LitString s)
 
-pTerm :: Parser Expr
-pTerm = choice
-  [ EInt <$> pInt
-  , EString <$> pString
-  , pAppOrVar
-  , EEffectOp PrintOp <$> (void (t TBuiltinPrint) *> t TOpenParen *> pExpr <* t TCloseParen)
-  , EEffectOp (EffectOpBuiltin "toString") <$> (void (t TBuiltinToString) *> t TOpenParen *> pExpr <* t TCloseParen) -- toString built-in
-  , EBlock <$> (void (t TOpenBrace) *> many pExpr <* void (t TCloseBrace)) -- Block expression
-  , (t TOpenParen *> pExpr <* t TCloseParen) -- Parenthesized expression
-  ]
 
--- Helper for distinguishing function application from variable reference
-pAppOrVar :: Parser Expr
-pAppOrVar = do
-  name <- pIdentifier
-  optional (t TOpenParen) >>= \case
-    Just _ -> EApp name <$> sepBy pExpr (t TComma) <* t TCloseParen
-    Nothing -> pure (EVar name)
+isStringLiteral :: L.Token -> Bool
+isStringLiteral (L.TokStringLiteral _) = True
+isStringLiteral _ = False
 
--- Parser for a function declaration
-pFuncDecl :: Parser Decl
-pFuncDecl = do
-  void (t TLet)
-  name <- pIdentifier
-  void (t TOpenParen)
-  params <- sepBy pIdentifier (t TComma)
-  void (t TCloseParen)
-  void (t TArrow)
-  body <- pExpr
-  effects <- optional pRequiresClause
-  pure $ FuncDecl name params body (maybe Set.empty id effects)
+parseVariable :: Parser Expr
+parseVariable = do
+  L.TokIdentifier name <- satisfy isIdentifier
+  return (Var name)
 
--- Parser for the main declaration
-pMainDecl :: Parser Decl
-pMainDecl = do
-  void (t (TIdentifier "main")) -- 'main' treated as a special identifier for simplicity
-  void (t TEquals)
-  body <- EBlock <$> (void (t TOpenBrace) *> many pExpr <* void (t TCloseBrace))
-  effects <- optional pRequiresClause
-  pure $ MainDecl body (maybe Set.empty id effects)
+parseExpr :: Parser Expr
+parseExpr = parseConcatExpr
 
--- Parser for a top-level declaration (either function or main)
-pDecl :: Parser Decl
-pDecl = pFuncDecl <|> pMainDecl
+parseConcatExpr :: Parser Expr
+parseConcatExpr = do
+  left <- parseTerm
+  parseConcat left <|> return left
 
--- Parser for the entire program
-pProgram :: Parser Program
-pProgram = Program <$> many pDecl <* t TEOF
+parseTerm :: Parser Expr
+parseTerm =
+      parseCall             -- e.g., greet("World")
+  <|> parseStringLiteral     -- e.g., "Hello"
+  <|> parseVariable
+  <|> parseDoBlock
+  -- <|> parseIntLiteral      -- numbers
 
--- Helper function to run the parser
-parsePura :: FilePath -> [Token] -> Either (ParseErrorBundle Text String) Program
-parsePura filePath = parse pProgram filePath
+parseConcat :: Expr -> Parser Expr
+parseConcat left = do
+  _ <- single L.TokStrConcat  -- parse ++ operator
+  right <- parseExpr         -- parse right side recursively
+  return (Concat left right)
+
+
+parseBlock :: Parser Expr
+parseBlock = do
+  _ <- single L.TokLBrace
+  exprs <- many parseExpr
+  _ <- single L.TokRBrace
+  return (Block exprs)
+
+parseDoBlock :: Parser Expr
+parseDoBlock = do
+  _ <- single L.TokDo
+  _ <- single L.TokLBrace
+  exprs <- many parseExpr
+  _ <- single L.TokRBrace
+  return (DoBlock exprs)
+
+parseFunction :: Parser Function
+parseFunction = do
+  name <- parseLet
+  params <- parseParams
+  parseArrow
+  body <- parseBlock
+  effects <- optional parseRequires
+  let effectList = Data.Maybe.fromMaybe [] effects
+  return (Function name params body effectList)
+
+parseCall :: Parser Expr
+parseCall = try $ do
+  L.TokIdentifier fname <- satisfy isIdentifier
+  _ <- single L.TokLParen  -- Must be '(' immediately after
+  args <- parseExpr `sepBy` single L.TokComma
+  _ <- single L.TokRParen
+  return (Call fname args)
+
+
+parseRequires :: Parser [Effect]
+parseRequires = do
+  _ <- single L.TokRequires
+  parseEffectNames
+
+parseEffectNames :: Parser [Effect]
+parseEffectNames = do
+  parseEffectName `sepBy` single L.TokComma
+
+parseEffectName :: Parser Effect
+parseEffectName = do
+  L.TokIdentifier eff <- satisfy isIdentifier
+  case eff of
+    "ConsoleWrite" -> return ConsoleWrite
+    "FileIO"       -> return FileIO
+    "Network"      -> return Network
+    _             -> fail ("Unknown effect: " ++ eff)
