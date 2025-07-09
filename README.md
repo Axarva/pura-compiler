@@ -96,3 +96,15 @@ AST
 - Expand language syntax (numbers, conditionals, recursion).  
 - Start prototype **code generation** for a simple target (e.g., JS or Haskell).  
 - Add test cases and improve error reporting.
+
+---
+
+## 5. TODO for July 9 2025
+
+- Design primitives (what exactly are included in primitives?)
+  -> Consider primitive types
+  -> Consider primitive operators
+- Implement primitives
+- Implement type check for primitives
+- Implement list -> (Try by 7/16)
+- Implement function types like (a ->  a)

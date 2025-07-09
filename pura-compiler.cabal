@@ -6,12 +6,12 @@ cabal-version: 2.2
 
 name:           pura-compiler
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/pura-compiler#readme>
-homepage:       https://github.com/githubuser/pura-compiler#readme
-bug-reports:    https://github.com/githubuser/pura-compiler/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2025 Author name here
+description:    Please see the README on GitHub at <https://github.com/Axarva/pura-compiler#readme>
+homepage:       https://github.com/Axarva/pura-compiler#readme
+bug-reports:    https://github.com/Axarva/pura-compiler/issues
+author:         Axarva
+maintainer:     timsinaatharva@gmail.com
+copyright:      2025 Axarva
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/pura-compiler
+  location: https://github.com/Axarva/pura-compiler
 
 library
   exposed-modules:
