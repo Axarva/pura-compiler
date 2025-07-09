@@ -1,0 +1,17 @@
+-- Pure function definition
+let add = (x, y) => x + y
+
+-- Function that performs an effect (must declare it)
+let greet = (name) => "Hello, " ++ name ++ "!" REQUIRES ConsoleWrite
+
+-- Program entry point (also declares its required effects)
+main = {
+  message = greet("World")
+  print(message) -- 'print' is a built-in operation that uses ConsoleWrite
+} REQUIRES ConsoleWrite
+
+-- Attempted invalid code (for demoing compiler error):
+-- let pure_calc = (x) => { print("Calculating") } -- ERROR: ConsoleWrite in pure func
+-- main = {
+--   result = pure_calc(5)
+-- }
