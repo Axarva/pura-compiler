@@ -1,1 +1,2 @@
-let greet = (name) => {"Hello, " ++ name ++ "!"} REQUIRES ConsoleWrite
+greet : String -> String
+let greet = (name) => {"Hello, " ++ name ++ "!" ++ True} REQUIRES ConsoleWrite

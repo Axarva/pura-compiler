@@ -98,6 +98,53 @@ AST
 - Add test cases and improve error reporting.
 
 ---
+## Primitives
+
+### 1. Primitive Types
+
+These are the core types supported by the language without user definitions:
+
+- `Int` – Integer numbers (e.g., `1`, `42`)
+- `String` – Sequences of characters (e.g., `"hello"`)
+- `Bool` – Boolean values (`true`, `false`)
+- `Unit` – Represents "no meaningful value" (like `()` in Haskell), used for functions with side effects
+- *(Optional for now)* `List` – Homogeneous list of elements (e.g., `[1, 2, 3]`)
+
+---
+
+### 2. Primitive Operators
+
+These are built-in operations the language supports for primitives:
+
+#### Arithmetic Operators (Int)
+| Operator | Type Signature          |
+|----------|-------------------------|
+| `+`      | `Int -> Int -> Int`     |
+| `-`      | `Int -> Int -> Int`     |
+| `*`      | `Int -> Int -> Int`     |
+| `/`      | `Int -> Int -> Int`     |
+
+#### String Operations
+| Operator | Type Signature               |
+|----------|------------------------------|
+| `++`     | `String -> String -> String` |
+
+#### Boolean Operators
+| Operator | Type Signature         |
+|----------|------------------------|
+| `&&`     | `Bool -> Bool -> Bool` |
+| `||`     | `Bool -> Bool -> Bool` |
+| `not`    | `Bool -> Bool`         |
+
+#### Comparison Operators (Int and String)
+| Operator | Type Signature                  |
+|----------|---------------------------------|
+| `==`     | `a -> a -> Bool` (*generic*)    |
+| `!=`     | `a -> a -> Bool` (*generic*)    |
+| `<`      | `Int -> Int -> Bool`            |
+| `>`      | `Int -> Int -> Bool`            |
+| `<=`     | `Int -> Int -> Bool`            |
+| `>=`     | `Int -> Int -> Bool`            |
 
 ## 5. TODO for July 9 2025
 
