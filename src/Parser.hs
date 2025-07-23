@@ -12,32 +12,9 @@ import Data.Void
 import Control.Monad
 import Data.Maybe ( fromMaybe, isJust, fromJust )
 import qualified Data.Map as Map
-import Debug.Trace -- Keep for debugging, remove when done
 
 -- Parser monad type
 type Parser = Parsec Void [L.Token]
-
--- Megaparsec Stream and VisualStream instances for custom tokens
--- These are necessary for errorBundlePretty to work properly
--- instance Stream [L.Token] where
---   type Token [L.Token] = L.Token
---   type Tokens [L.Token] = [L.Token]
-
---   take1_ (t:ts) = Just (t, ts)
---   take1_ [] = Nothing
-
---   takeN_ n s
---     | n <= 0 = Just ([], s)
---     | null s = Nothing
---     | otherwise = Just (splitAt n s)
-
---   tokensLength _ = length
---   showTokens _ = show
-
--- instance VisualStream [L.Token] where
---   tokenWidth _ = length . show
---   tokensToString _ = show
-
 
 -- Helper for chainr1 (right-associative binary operator) for Types
 chainr1'Type :: Parser a -> Parser (a -> a -> a) -> Parser a
@@ -88,7 +65,7 @@ parseListType = do
 parseLet :: Parser String
 parseLet = do
   _ <- single L.TokLet
-  L.TokIdentifier name <- satisfy $ isIdentifier'
+  L.TokIdentifier name <- satisfy isIdentifier'
   _ <- single L.TokEquals
   return name
 
@@ -98,11 +75,12 @@ parseArrow = void (single L.TokArrow)
 
 -- Helpers to check if a token is an identifier
 
-isIdentifier expected (L.TokIdentifier given) = given == expected 
+isIdentifier :: String -> L.Token -> Bool
+isIdentifier expected (L.TokIdentifier given) = given == expected
 isIdentifier _ _ = False
 
 isIdentifier' :: L.Token -> Bool
-isIdentifier' (L.TokIdentifier id) = True
+isIdentifier' (L.TokIdentifier _) = True
 isIdentifier' _ = False
 
 -- Parses a string literal
@@ -126,7 +104,7 @@ parseBoolLiteral = do
 -- Parses a variable reference
 parseVariable :: Parser Expr
 parseVariable = do
-  L.TokIdentifier name <- satisfy $ isIdentifier'
+  L.TokIdentifier name <- satisfy isIdentifier'
   return (Var name)
 
 -- Parses a list literal (e.g., [1, 2, 3])
@@ -201,22 +179,20 @@ parseComparisonExpr :: Parser Expr
 parseComparisonExpr = chainl1'Expr parseAdditiveExpr (parseBinOpToken isComparisonOp)
 
 parseAdditiveExpr :: Parser Expr
-parseAdditiveExpr = chainl1'Expr parseMultiplicativeExpr (parseBinOpToken isAdditiveOp)
+parseAdditiveExpr = chainl1'Expr parseConcatExpr (parseBinOpToken isAdditiveOp)
+
+parseConcatExpr :: Parser Expr
+parseConcatExpr = chainl1'Expr parseMultiplicativeExpr (try (do _ <- single L.TokStrConcat; return Concat))
 
 parseMultiplicativeExpr :: Parser Expr
 parseMultiplicativeExpr = chainl1'Expr parseUnaryExpr (parseBinOpToken isMultiplicativeOp)
-
--- String Concatenation has higher precedence than arithmetic, but lower than unary.
-parseConcatExpr :: Parser Expr
-parseConcatExpr = chainl1'Expr parseUnaryExpr (try (do _ <- single L.TokStrConcat; return Concat))
-
 -- Unary Operators (like 'not' using '!')
 parseUnaryExpr :: Parser Expr
 parseUnaryExpr =
       (do _ <- single L.TokBang -- Expect '!' for 'not'
           expr <- parseUnaryExpr -- Recursively parse the operand
           return (UnOp Not expr))
-  <|> parseConcatExpr -- Fall through to concatenation after unary
+  <|> parseTerm -- Fall through to terms after unary
 
 -- Term level expressions: atomic values, function calls, parenthesized expressions
 parseTerm :: Parser Expr
@@ -267,13 +243,13 @@ parseParams = do
 -- Parses individual parameter names
 parseParamNames :: Parser String
 parseParamNames = do
-  L.TokIdentifier name <- satisfy $ isIdentifier'
+  L.TokIdentifier name <- satisfy isIdentifier'
   return name
 
 -- Parses a function call (e.g., `func(arg1, arg2)`)
 parseCall :: Parser Expr
 parseCall = try $ do -- 'try' allows backtracking if it looks like a call but isn't (e.g., just an identifier)
-  L.TokIdentifier fname <- satisfy $ isIdentifier'
+  L.TokIdentifier fname <- satisfy isIdentifier'
   _ <- single L.TokLParen  -- Must be '(' immediately after identifier for a call
   args <- parseExpr `sepBy` single L.TokComma
   _ <- single L.TokRParen
@@ -282,7 +258,7 @@ parseCall = try $ do -- 'try' allows backtracking if it looks like a call but is
 -- Parses a standalone type declaration line (e.g., `myFunction : Int -> String`)
 parseTypeDeclaration :: Parser (String, Type)
 parseTypeDeclaration = do
-  L.TokIdentifier name <- satisfy $ isIdentifier' -- Function name
+  L.TokIdentifier name <- satisfy isIdentifier' -- Function name
   _ <- single L.TokColon
   funcSig <- parseType
   return (name, funcSig)
@@ -309,12 +285,11 @@ parseRequires = do
   parseEffectNames
 
 parseEffectNames :: Parser [Effect]
-parseEffectNames = do
-  parseEffectName `sepBy` single L.TokComma
+parseEffectNames = parseEffectName `sepBy` single L.TokComma
 
 parseEffectName :: Parser Effect
 parseEffectName = do
-  L.TokIdentifier eff <- satisfy $ isIdentifier'
+  L.TokIdentifier eff <- satisfy isIdentifier'
   case eff of
     "ConsoleWrite" -> return ConsoleWrite
     "FileIO"       -> return FileIO
@@ -329,55 +304,16 @@ parseEffectName = do
 data TopLevelDecl = TypeDecl (String, Type) | FuncDef Function
 
 -- The main program parser: collects all top-level declarations and merges them
--- parseProgram :: Parser [Function]
--- parseProgram = do
---   -- Use a recursive helper to collect all declarations
---   decls <- traceShow "Decls: " parseAllTopLevelDeclarations []
-
---   -- Separate type declarations and function definitions
---   let typeDeclarations = [ td | TypeDecl td <- decls ]
---   let functionDefinitions = [ fd | FuncDef fd <- decls ]
-
---   -- Convert type declarations into a Map for easy lookup
---   let typeMap = Map.fromList typeDeclarations
-
---   -- Assign declared type signatures to their corresponding function definitions
---   let functionsWithTypes = map (\f@Function{funcName} ->
---                                   case Map.lookup funcName typeMap of
---                                     Just t -> f { funcTypeSignature = t }
---                                     Nothing -> error $ "Missing type declaration for function: " ++ funcName ++ ". All top-level functions must have an explicit type declaration."
---                                ) functionDefinitions
-
---   -- Optional: More robust error checking (e.g., declared type but no definition, duplicate definitions)
---   let declaredButUndefined = Map.keys $ Map.difference typeMap (Map.fromList $ map (\f -> (funcName f, ())) functionsWithTypes)
---   unless (null declaredButUndefined) $
---     fail $ "Error: Type declarations found for undefined functions: " ++ show declaredButUndefined
-
---   let duplicateDefs = findDuplicates (map funcName functionDefinitions)
---   unless (null duplicateDefs) $
---     fail $ "Error: Duplicate function definitions for: " ++ show duplicateDefs
-
---   -- Finally, ensure that the entire input file has been consumed and we're at EOF.
---   -- This is crucial to catch unparsed trailing tokens.
---   _ <- single L.TokEOF
-
---   return functionsWithTypes
-
--- -- Recursive helper to parse all top-level declarations
 
 parseTopLevelDeclaration :: Parser TopLevelDecl
 parseTopLevelDeclaration =
-      (TypeDecl <$> try parseTypeDeclaration)
-  <|> (FuncDef <$> parseFunctionDefinition)
+      TypeDecl <$> try parseTypeDeclaration
+  <|> FuncDef <$> parseFunctionDefinition
+
 parseProgram :: Parser [Function]
 parseProgram = do
-  -- Parse zero or more top-level declarations
-  -- 'sepEndBy' is robust for parsing items that can have separators (none here, so 'pure ()')
-  -- and also handling trailing separators if they were allowed.
-  -- Here, it simply parses individual items until it cannot.
-  decls <- parseTopLevelDeclaration `sepEndBy` (pure ()) -- Parse TopLevelDecl until it fails
-
-  -- Perform the merging logic (this part remains the same)
+  decls <- many parseTopLevelDeclaration -- USE MANY HERE
+  -- The rest of the logic remains the same
   let typeDeclarations = [ td | TypeDecl td <- decls ]
   let functionDefinitions = [ fd | FuncDef fd <- decls ]
 
@@ -397,12 +333,8 @@ parseProgram = do
   unless (null duplicateDefs) $
     fail $ "Error: Duplicate function definitions for: " ++ show duplicateDefs
 
-  -- Finally, consume the End-Of-File token.
-  -- This should be the very last thing that happens after all program content.
-  eof -- Megaparsec's built-in EOF parser
-
+  _ <- single L.TokEOF -- This line remains at the end
   return functionsWithTypes
-
 
 -- Simple helper to find duplicates in a list (for basic error checking)
 findDuplicates :: Ord a => [a] -> [a]
