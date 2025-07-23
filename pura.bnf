@@ -1,0 +1,100 @@
+# Formal Grammar for the Pura Language in Backus-Naur Form (BNF)
+
+# =================================
+# 1. Top-Level Program Structure
+# =================================
+
+<program> ::= <top_level_declaration>* <EOF>
+
+<top_level_declaration> ::= <type_declaration> | <function_definition>
+
+
+# =================================
+# 2. Declarations
+# =================================
+
+<type_declaration> ::= <identifier> ":" <type>
+
+<function_definition> ::= "let" <identifier> "=" <params> "=>" <block> <requires_clause>?
+
+<params> ::= "(" ( <identifier> ("," <identifier>)* )? ")"
+
+<requires_clause> ::= "REQUIRES" <effect> ("," <effect>)*
+
+<effect> ::= "ConsoleWrite" | "FileIO" | "Network"
+
+
+# =================================
+# 3. Type System
+# =================================
+
+# Right-associative arrow
+<type> ::= <basic_type> ( "->" <type> )?
+
+<basic_type> ::= "Int" | "String" | "Bool" | "Unit" | <list_type> | "(" <type> ")"
+
+<list_type> ::= "List" <basic_type>
+
+
+# =================================
+# 4. Expressions (with Operator Precedence)
+# =================================
+
+# The entry point for any expression, starting with the lowest precedence. 
+# Note that the <term> cascades down to each expr from <unary_expr>.
+
+<expr> ::= <or_expr>
+
+# Precedence Level 1: Logical OR (left-associative)
+<or_expr> ::= <and_expr> ( "||" <and_expr> )*
+
+# Precedence Level 2: Logical AND (left-associative)
+<and_expr> ::= <comparison_expr> ( "&&" <comparison_expr> )*
+
+# Precedence Level 3: Comparison (non-associative)
+<comparison_expr> ::= <additive_expr> ( ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) <additive_expr> )?
+
+# Precedence Level 4: Addition/Subtraction (left-associative)
+<additive_expr> ::= <concat_expr> ( ( "+" | "-" ) <concat_expr> )*
+
+# Precedence Level 5: String Concatenation (left-associative)
+<concat_expr> ::= <multiplicative_expr> ( "++" <multiplicative_expr> )*
+
+# Precedence Level 6: Multiplication/Division (left-associative)
+<multiplicative_expr> ::= <unary_expr> ( ( "*" | "/" ) <unary_expr> )*
+
+# Precedence Level 7: Unary Operators (right-associative)
+<unary_expr> ::= "!" <unary_expr> | <term>
+
+
+# =================================
+# 5. Terms and Literals (Highest Precedence)
+# =================================
+
+# A <term> is an atomic part of an expression.
+<term> ::= <call>
+         | <list_literal>
+         | <do_block>
+         | <variable>
+         | <string_literal>
+         | <int_literal>
+         | <bool_literal>
+         | "(" <expr> ")"
+
+<call> ::= <identifier> "(" ( <expr> ("," <expr>)* )? ")"
+
+<block> ::= "{" <expr>* "}"
+
+<do_block> ::= "do" <block>
+
+<list_literal> ::= "[" ( <expr> ("," <expr>)* )? "]"
+
+<variable> ::= <identifier>
+
+<string_literal> ::= '"' <char>* '"'
+
+<int_literal> ::= <digit>+
+
+<bool_literal> ::= "True" | "False"
+
+# Note: <identifier>, <char>, and <digit> are typically defined by the lexer.
