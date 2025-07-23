@@ -1,3 +1,13 @@
+2025/07/09
+- Design primitives (what exactly are included in primitives?)
+  -> Consider primitive types
+  -> Consider primitive operators
+- Implement primitives
+- Implement type check for primitives
+- Implement list -> (Try by 7/16)
+- Implement function types like (a ->  a)
+
+
 2025/07/16
 - Debug parser
 - Study grammar theory (BNF, CFG)

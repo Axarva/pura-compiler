@@ -1,157 +1,63 @@
+ The Pura Compiler
 
-# Pura Compiler — Current Status and Roadmap
+Pura is a statically-typed, functional programming language prototype written in Haskell. This compiler implements a complete pipeline from source code to a final executable, including a lexer, a recursive descent parser, a type checker, and an effect system.
 
-## 1. What the compiler does now
+## Features
 
-- **Lexer**:  
-  Converts raw source code text into a stream of tokens like `TokLet`, `TokIdentifier`, `TokStringLiteral`, `TokStrConcat`, etc.
+* **Static Typing:** All types are checked at compile time to prevent runtime type errors.
+* **First-Class Functions:** Functions can be passed as arguments and returned from other functions.
+* **Algebraic Data Types:** The language supports basic types like `Int`, `String`, `Bool`, `Unit`, and parameterized `List` types.
+* **Effect System:** Functions must declare their side effects (e.g., `ConsoleWrite`), which are checked by the compiler.
+* **Operator Precedence:** Mathematical and logical expressions are parsed with standard operator precedence.
+* **Formal Grammar:** The language syntax is formally documented using Backus-Naur Form (BNF).
 
-- **Parser**:  
-  Transforms token stream into an Abstract Syntax Tree (AST).  
-  Currently supports:  
-  - Function definitions (`let greet = (name) => { ... } REQUIRES ...`)  
-  - Expressions: string literals, variables, function calls, string concatenations (`++`), do blocks, and blocks `{ ... }`  
-  - Optional effect annotations (`REQUIRES ConsoleWrite, FileIO`)
+## How to Build
 
-- **AST**:  
-  Data types representing functions, expressions, and effects for further processing.
+This project is built using the Haskell `stack` tool.
 
----
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repo-url>
+    cd pura-compiler
+    ```
 
-## 2. How the greet function is parsed
+2.  **Build the project:**
+    ```bash
+    stack build
+    ```
+    This command will download the necessary GHC version and all dependencies, then compile the project.
 
-Source:
+3.  **Run the compiler:**
+    The executable will be placed in the `.stack-work` directory. You can run it via `stack`:
+    ```bash
+    stack exec pura-compiler-exe -- <path-to-your-file.pura>
+    ```
 
-```pura
-let greet = (name) => {
-  "Hello, " ++ name ++ "!"
-} REQUIRES ConsoleWrite
-```
+## Example Pura Code
 
-### Token stream (output of lexer):
-
-```
-[TokLet, TokIdentifier "greet", TokEquals, TokLParen, TokIdentifier "name", TokRParen, TokArrow, TokLBrace,
- TokStringLiteral "Hello, ", TokStrConcat, TokIdentifier "name", TokStrConcat, TokStringLiteral "!", TokRBrace,
- TokRequires, TokIdentifier "ConsoleWrite", TokEOF]
-```
-
-### Parser workflow:
-
-- `parseFunction` expects the `let` keyword → parses the function name → parses parameters → parses arrow `=>` → parses function body block → optionally parses the `REQUIRES` clause.  
-- `parseBlock` collects expressions inside `{ ... }`.  
-- `parseExpr` parses concatenation expressions, recursively building nested `Concat` AST nodes for `++`.  
-- `parseTerm` recognizes string literals, variables, function calls, or do blocks.  
-- `parseEffectName` maps identifiers like `"ConsoleWrite"` to the `Effect` data type.
-
-### Final AST:
+Here is a small example of what Pura code looks like:
 
 ```haskell
-Function
-  { funcName = "greet"
-  , funcArgs = ["name"]
-  , funcBody = Block
-      [ Concat
-          (LitString "Hello, ")
-          (Concat (Var "name") (LitString "!"))
-      ]
-  , funcEffects = [ConsoleWrite]
-  }
+-- All top-level functions require a type signature.
+greet : String -> String
+
+-- A function definition with a parameter list, body, and declared effects.
+let greet = (name) => {
+    "Hello, " ++ name ++ "!"
+} REQUIRES ConsoleWrite
+
+-- The main entry point is not yet implemented, but functions can be defined.
 ```
 
----
+## Project Structure
 
-## 3. Compiler Architecture Roadmap
+The compiler is organized into several modules, each with a specific responsibility:
 
-### Pipeline overview:
-
-```
-Source code
-  ↓ Lexer
-Tokens
-  ↓ Parser
-AST
-  ↓ Type Checker (verify types, e.g., string concatenation validity)
-  ↓ Effect Checker (verify declared vs used side effects)
-  ↓ Code Generator (target JS, bytecode, or other)
-```
-
-### Module responsibilities:
-
-- **Lexer** (`Lexer.hs`): tokenizes source text.  
-- **Parser** (`Parser.hs`): builds AST from tokens.  
-- **AST** (`AST.hs`): defines data types for functions, expressions, and effects.  
-- **TypeChecker** (`TypeChecker.hs`): enforces type rules.  
-- **EffectChecker** (`EffectChecker.hs`): verifies side effect declarations.  
-- **CodeGen** (`CodeGen.hs`): outputs target code.
-
----
-
-## 4. Next steps
-
-- Implement basic **type checking** for expressions and functions.  
-- Implement **effect checking**:  
-  - Detect unused or undeclared effects.  
-  - Warn or error accordingly.  
-- Expand language syntax (numbers, conditionals, recursion).  
-- Start prototype **code generation** for a simple target (e.g., JS or Haskell).  
-- Add test cases and improve error reporting.
-
----
-## Primitives
-
-### 1. Primitive Types
-
-These are the core types supported by the language without user definitions:
-
-- `Int` – Integer numbers (e.g., `1`, `42`)
-- `String` – Sequences of characters (e.g., `"hello"`)
-- `Bool` – Boolean values (`true`, `false`)
-- `Unit` – Represents "no meaningful value" (like `()` in Haskell), used for functions with side effects
-- *(Optional for now)* `List` – Homogeneous list of elements (e.g., `[1, 2, 3]`)
-
----
-
-### 2. Primitive Operators
-
-These are built-in operations the language supports for primitives:
-
-#### Arithmetic Operators (Int)
-| Operator | Type Signature          |
-|----------|-------------------------|
-| `+`      | `Int -> Int -> Int`     |
-| `-`      | `Int -> Int -> Int`     |
-| `*`      | `Int -> Int -> Int`     |
-| `/`      | `Int -> Int -> Int`     |
-
-#### String Operations
-| Operator | Type Signature               |
-|----------|------------------------------|
-| `++`     | `String -> String -> String` |
-
-#### Boolean Operators
-| Operator | Type Signature         |
-|----------|------------------------|
-| `&&`     | `Bool -> Bool -> Bool` |
-| `||`     | `Bool -> Bool -> Bool` |
-| `not`    | `Bool -> Bool`         |
-
-#### Comparison Operators (Int and String)
-| Operator | Type Signature                  |
-|----------|---------------------------------|
-| `==`     | `a -> a -> Bool` (*generic*)    |
-| `!=`     | `a -> a -> Bool` (*generic*)    |
-| `<`      | `Int -> Int -> Bool`            |
-| `>`      | `Int -> Int -> Bool`            |
-| `<=`     | `Int -> Int -> Bool`            |
-| `>=`     | `Int -> Int -> Bool`            |
-
-## 5. TODO for July 9 2025
-
-- Design primitives (what exactly are included in primitives?)
-  -> Consider primitive types
-  -> Consider primitive operators
-- Implement primitives
-- Implement type check for primitives
-- Implement list -> (Try by 7/16)
-- Implement function types like (a ->  a)
+* `Main.hs`: The main entry point for the compiler executable. It reads the file, runs the compilation pipeline, and prints the results or errors.
+* `Lexer.hs`: The **Lexer** (or tokenizer). It scans the raw source code string and converts it into a stream of tokens (e.g., `TokIdentifier`, `TokPlus`).
+* `Parser.hs`: The **Parser**. It takes the stream of tokens from the lexer and builds an Abstract Syntax Tree (AST) based on the language's grammar. It is implemented as a top-down, recursive descent parser.
+* `AST.hs`: Defines the **Abstract Syntax Tree**. These are the Haskell data structures that represent the code's structure (e.g., `Function`, `Expr`, `BinOp`).
+* `Types.hs`: Defines the data structures for the language's **type system** (e.g., `TInt`, `TArr`).
+* `TypeChecker.hs`: The **Type Checker**. It walks the AST to verify that all expressions and function calls adhere to the language's type rules, preventing type errors.
+* `Permissions.hs`: The **Effect Checker**. It walks the AST to ensure that any function performing a side effect has explicitly declared it in its `REQUIRES` clause.
+* `CodeGen.hs`: (Future Work) This module will be responsible for **Code Generation**, taking the validated AST and translating it into a target language like LLVM or another high-level language.
