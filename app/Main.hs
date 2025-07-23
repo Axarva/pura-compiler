@@ -2,7 +2,6 @@
 module Main where
 
 import System.Environment (getArgs)
--- REMOVE errorBundlePretty from here. Keep 'parse'.
 import Text.Megaparsec (parse)
 import Lexer (tokenize)
 import Parser (parseProgram)
