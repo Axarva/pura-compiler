@@ -17,7 +17,7 @@ This project is built using the Haskell `stack` tool.
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/Axarva/pura-compiler.git
     cd pura-compiler
     ```
 
