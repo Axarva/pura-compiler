@@ -99,3 +99,32 @@
             ```
         * **Expected Outcome**: Successful lexing and parsing of both functions. `myNumbers` passes type check (`List Int`). `mixedList` **fails** type check: "String and Int cannot coexist in the same list."
 
+* **3. Acceptance Tests (End-to-End)**
+
+    * **Purpose:** Verify the compiler's behavior for a wide range of scenarios, ensuring it meets the language specification for both valid and invalid programs.
+
+    * **Methodology:**
+
+        * **Pass Tests:**
+
+            Goal: Ensure all valid Pura programs compile successfully.
+
+            Method: Create a directory (pass_tests/) containing numerous valid Pura programs.
+
+            Verification: Run the compiler on each file; confirm success status (e.g., exit code 0) and no error output.
+
+        * **Fail Tests:**
+
+            Goal: Verify the compiler correctly reports specific errors for invalid programs.
+
+            Method: Create a directory (fail_tests/) containing programs with single, deliberate errors, categorized by type.
+
+            Test Categories:
+
+                fail_tests/syntax_error/: Files with incorrect grammar (e.g., missing parentheses, unclosed blocks). Compiler should fail during parsing.
+
+                fail_tests/type_mismatch/: Files with incorrect types (e.g., 1 + "2", [1, True]). Compiler should fail during type checking with a specific error message.
+
+                fail_tests/undeclared_effect/: Files using a side-effecting function without declaration (e.g., print without REQUIRES ConsoleWrite). Compiler should fail during effect checking.
+
+            Verification: For each file, check compiler exit status (error) and confirm the error message contains expected text/code.
