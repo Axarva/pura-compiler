@@ -1,5 +1,11 @@
-greet : String -> String
-let greet = (name) => {"Hello, " ++ name ++ "!"} REQUIRES ConsoleWrite
+greet : String -> String -> String
+let greet = (name,name2) => {"Hello, " ++ name ++ " and " ++ name2 ++ "!"} REQUIRES ConsoleWrite
+
+greetAsa : String -> String
+let greetAsa = (name2) => {greet("Asa",name2)}
 
 main : Unit
-let main = () => {print(greet("Asa"))} REQUIRES ConsoleWrite
+let main = () => {print(greet("Asa", "Kesa"))} REQUIRES ConsoleWrite
+
+main2 : Unit
+let main2 = () => {main()}

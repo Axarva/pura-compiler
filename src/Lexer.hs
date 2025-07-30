@@ -77,6 +77,7 @@ nextToken ('+' : rest) = (TokPlus, rest)            -- Then +
 nextToken (':' : rest) = (TokColon, rest)
 nextToken ('[' : rest) = (TokLBracket, rest)
 nextToken (']' : rest) = (TokRBracket, rest)
+nextToken (',' : rest) = (TokComma, rest)
 nextToken s@(c:_)
   | isAlpha c =
       let (ident, rest') = span isAlphaNum s
