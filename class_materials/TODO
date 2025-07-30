@@ -13,3 +13,9 @@
 - Study grammar theory (BNF, CFG)
 - Study parsing mechanisms (Using LL, consider and learn others)
 
+2025/07/30
+- Consider the output of codegen 
+  -> Which language? x86? java? JS?
+- Consider goals for 9/22 
+- Consider syntax design to allow partial application and currying
+- Review roadmap
