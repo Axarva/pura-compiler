@@ -19,3 +19,6 @@
 - Consider goals for 9/22 
 - Consider syntax design to allow partial application and currying
 - Review roadmap
+
+2025/08/06
+- Consider directly implementing html into the language rather than a way to represent it
