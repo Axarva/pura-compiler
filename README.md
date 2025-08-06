@@ -61,3 +61,53 @@ The compiler is organized into several modules, each with a specific responsibil
 * `TypeChecker.hs`: The **Type Checker**. It walks the AST to verify that all expressions and function calls adhere to the language's type rules, preventing type errors.
 * `Permissions.hs`: The **Effect Checker**. It walks the AST to ensure that any function performing a side effect has explicitly declared it in its `REQUIRES` clause.
 * `CodeGen.hs`: (Future Work) This module will be responsible for **Code Generation**, taking the validated AST and translating it into a target language like LLVM or another high-level language.
+
+## 🛠️ Current Work: Adding Currying and Partial Application Support
+
+To support higher-order functional patterns and simplify syntax (e.g., `let main2 = main`), I am currently working on implementing currying and partial application in the compiler. This will bring the language closer to idiomatic functional programming.
+
+---
+
+###  Goals
+
+- [ ] Enable curried function definitions using `x => y => body` syntax
+- [x] Update type system to treat arrow types as right-associative
+- [ ] Support partial application (`greet "Asa"`)
+- [ ] Allow functions as first-class values (`let main2 = main`)
+- [ ] Maintain or desugar tuple-style argument syntax for convenience
+
+---
+
+### 🔧 Changes in Progress
+
+#### Parser
+- [ ] Add support for nested lambdas: `x => y => body`
+- [ ] Desugar `(x, y) => body` into `x => y => body` internally (optional)
+
+#### Type Checker
+- [ ] Parse `A -> B -> C` as `A -> (B -> C)`
+- [ ] Infer function-returning functions
+- [ ] Type-check partially applied functions
+
+#### Evaluator
+- [ ] Treat functions as values
+- [ ] Support applying fewer arguments than a function’s arity
+
+---
+
+### 📌 Example After Changes
+
+```haskell
+greet : String -> String -> String
+let greet = name => name2 => {
+  "Hello, " ++ name ++ " and " ++ name2 ++ "!"
+}
+
+let greetAsa = greet "Asa"
+
+main : Unit
+let main = () => { print(greetAsa("Kesa")) }
+
+let main2 = main
+```
+This feature lays the foundation for future support of point-free style, higher-order UI abstractions, and first-class composition, which are key to the overall goal of easing UI development using this language.
