@@ -14,6 +14,8 @@ data Expr
   | UnOp UnOperator Expr      -- New: For unary operators (not)
   | Block [Expr]
   | DoBlock [Expr]
+    -- NEW: Treat a binary operator itself as a value, e.g. (+)
+  | OpAsFunction BinOperator
   deriving (Show, Eq)
 
 data BinOperator

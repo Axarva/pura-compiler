@@ -6,7 +6,6 @@ module TypeChecker where
 import AST
 import Types -- Import your Type definitions
 import qualified Data.Map as Map
-import Control.Monad (foldM, mapM_)
 -- import Control.Arrow -- Removed, as &&& is no longer used here
 
 -- Type environment for local variables (parameters, let-bound vars)
@@ -35,11 +34,24 @@ applyArgumentType globalEnv localEnv currentFuncType argExpr = do
 --------------------------------------------------------------------------------
 -- 2. Core Expression Type Inference
 --------------------------------------------------------------------------------
+-- Helper to get the type for a binary operator
+getOpType :: BinOperator -> Either String Type
+getOpType op
+  | op `elem` [Add, Sub, Mul, Div] = Right $ TArr TInt (TArr TInt TInt)
+  | op `elem` [And, Or] = Right $ TArr TBool (TArr TBool TBool)
+  | op `elem` [Lt, Gt, Le, Ge] = Right $ TArr TInt (TArr TInt TBool)
+  -- For now, we can't section equality operators because they are polymorphic.
+  -- A more advanced type system with typeclasses could handle this.
+  | op `elem` [Eq, Neq] = Left "Equality operators `==` and `!=` cannot be used as functions due to polymorphism."
+  | otherwise = Left "Operator not implemented."
 
--- The main type inference function for expressions
+-- MODIFIED: Added a case for OpAsFunction
 inferExprType :: GlobalEnv -> TypeEnv -> Expr -> Either String Type
 inferExprType globalEnv localEnv expr = case expr of
-  LitInt _    -> Right TInt
+  -- NEW: Handle an operator used as a function
+  OpAsFunction op -> getOpType op
+
+  LitInt _ -> Right TInt -- <<< THIS LINE WAS MISSING
   LitString _ -> Right TString
   LitBool _   -> Right TBool
   Var name    -> case Map.lookup name localEnv of
@@ -53,7 +65,7 @@ inferExprType globalEnv localEnv expr = case expr of
     t2 <- inferExprType globalEnv localEnv e2
     if t1 == TString && t2 == TString
       then Right TString
-      else Left $ "Type error: Cannot concatenate " ++ show t1 ++ " and " ++ show t2 ++ ". Expected String."
+      else Left $ "Type error: Cannot concatenate " ++ show t1 ++ " and " ++ show t2
 
   BinOp op e1 e2 -> do
     t1 <- inferExprType globalEnv localEnv e1
@@ -108,6 +120,8 @@ inferExprType globalEnv localEnv expr = case expr of
         if all (== firstType) restTypes
           then Right (TList firstType)
           else Left $ "Type error: All elements in a list must have the same type. Expected " ++ show firstType ++ " but got mixed types."
+
+
 
 --------------------------------------------------------------------------------
 -- 3. Helper Functions for Binary Operator Type Checks

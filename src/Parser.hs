@@ -203,20 +203,32 @@ parseApplication = do
 
 -- NEW: Atomic expressions that can be applied
 -- This is the new base case for the expression hierarchy.
+
+-- Helper to check if a token is a binary operator
+isBinOpToken :: L.Token -> Maybe BinOperator
+isBinOpToken L.TokPlus = Just Add; isBinOpToken L.TokMinus = Just Sub
+isBinOpToken L.TokStar = Just Mul; isBinOpToken L.TokSlash = Just Div
+isBinOpToken L.TokAmpAmp = Just And; isBinOpToken L.TokPipePipe = Just Or
+isBinOpToken L.TokEqEq = Just Eq; isBinOpToken L.TokBangEq = Just Neq
+isBinOpToken L.TokLt = Just Lt; isBinOpToken L.TokGt = Just Gt
+isBinOpToken L.TokLtEq = Just Le; isBinOpToken L.TokGtEq = Just Ge
+isBinOpToken _ = Nothing
+
 parseAtom :: Parser Expr
 parseAtom =
       parseStringLiteral
   <|> parseBoolLiteral
   <|> parseIntLiteral
   <|> try parseListLiteral
-  <|> try (do -- An identifier is a variable, UNLESS it's followed by a colon.
-              v <- parseVariable
-              notFollowedBy (single L.TokColon)
-              return v
-          )
+  <|> try (do v <- parseVariable; notFollowedBy (single L.TokColon); return v)
   <|> parseDoBlock
-  <|> (do _ <- single L.TokLParen
-          expr <- parseExpr
+  <|> (do -- This now handles both regular parenthesized expressions AND (op)
+          _ <- single L.TokLParen
+          expr <- try (do -- Operator as Function: (op)
+                          op <- satisfy (isJust . isBinOpToken)
+                          return $ OpAsFunction (fromJust $ isBinOpToken op)
+                      )
+              <|> parseExpr -- Fallback to a regular expression
           _ <- single L.TokRParen
           return expr)
 

@@ -11,9 +11,7 @@ x : String
 let x = "10"
 
 addOne : Int -> Int
-let addOne = x => {
-  x + 1
-}
+let addOne = (+) 1
 
 main : Int
 let main = addOne 5

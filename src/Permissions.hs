@@ -23,6 +23,7 @@ gatherEffects globalEnv expr = case expr of
   LitInt _      -> []
   LitString _   -> []
   LitBool _     -> []
+  OpAsFunction _ -> []
   LitList elements -> concatMap (gatherEffects globalEnv) elements
   Concat e1 e2  -> gatherEffects globalEnv e1 ++ gatherEffects globalEnv e2
   BinOp _ e1 e2 -> gatherEffects globalEnv e1 ++ gatherEffects globalEnv e2
