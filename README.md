@@ -42,7 +42,7 @@ Here is a small example of what Pura code looks like:
 greet : String -> String
 
 -- A function definition with a parameter list, body, and declared effects.
-let greet = (name) => {
+let greet = name => {
     "Hello, " ++ name ++ "!"
 } REQUIRES ConsoleWrite
 
@@ -70,28 +70,26 @@ To support higher-order functional patterns and simplify syntax (e.g., `let main
 
 ###  Goals
 
-- [ ] Enable curried function definitions using `x => y => body` syntax
+- [x] Enable curried function definitions using `x => y => body` syntax
 - [x] Update type system to treat arrow types as right-associative
-- [ ] Support partial application (`greet "Asa"`)
-- [ ] Allow functions as first-class values (`let main2 = main`)
-- [ ] Maintain or desugar tuple-style argument syntax for convenience
+- [x] Support partial application (`greet "Asa"`)
+- [x] Allow functions as first-class values (`let main2 = main`)
 
 ---
 
 ### 🔧 Changes in Progress
 
 #### Parser
-- [ ] Add support for nested lambdas: `x => y => body`
-- [ ] Desugar `(x, y) => body` into `x => y => body` internally (optional)
+- [x] Add support for nested lambdas: `x => y => body`
 
 #### Type Checker
-- [ ] Parse `A -> B -> C` as `A -> (B -> C)`
-- [ ] Infer function-returning functions
-- [ ] Type-check partially applied functions
+- [x] Parse `A -> B -> C` as `A -> (B -> C)`
+- [x] Infer function-returning functions
+- [x] Type-check partially applied functions
 
 #### Evaluator
-- [ ] Treat functions as values
-- [ ] Support applying fewer arguments than a function’s arity
+- [x] Treat functions as values
+- [x] Support applying fewer arguments than a function’s arity
 
 ---
 
