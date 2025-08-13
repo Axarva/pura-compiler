@@ -4,10 +4,10 @@
 # 1. Top-Level Program Structure
 # =================================
 
-<program> ::= <top_level_declaration>* <EOF>
+<program> ::= <top_level_declaration>+
 
-<top_level_declaration> ::= <type_declaration> | <function_definition>
-
+<top_level_declaration> ::= <type_declaration>
+                          | <let_binding>
 
 # =================================
 # 2. Declarations
@@ -15,25 +15,26 @@
 
 <type_declaration> ::= <identifier> ":" <type>
 
-<function_definition> ::= "let" <identifier> "=" <params> "=>" <block> <requires_clause>?
+<let_binding>      ::= "let" <identifier> "=" <curried_param>* <body> <requires_clause>?
 
-<params> ::= "(" ( <identifier> ("," <identifier>)* )? ")"
+<curried_param>    ::= <identifier> "=>"
 
-<requires_clause> ::= "REQUIRES" <effect> ("," <effect>)*
+<body>             ::= <block> | <expr>
 
-<effect> ::= "ConsoleWrite" | "FileIO" | "Network"
+<block>            ::= "{" <expr>* "}"
 
+<requires_clause>  ::= "REQUIRES" <effect> ("," <effect>)*
 
 # =================================
 # 3. Type System
 # =================================
 
-# Right-associative arrow
-<type> ::= <basic_type> ( "->" <type> )?
+<type>         ::= <basic_type> ( "->" <type> )?
 
-<basic_type> ::= "Int" | "String" | "Bool" | "Unit" | <list_type> | "(" <type> ")"
+<basic_type>   ::= "Int" | "String" | "Bool" | "Unit" | <list_type> | "(" <type> ")"
 
-<list_type> ::= "List" <basic_type>
+<list_type>    ::= "List" <basic_type>
+
 
 
 # =================================
@@ -52,7 +53,7 @@
 <and_expr> ::= <comparison_expr> ( "&&" <comparison_expr> )*
 
 # Precedence Level 3: Comparison (non-associative)
-<comparison_expr> ::= <additive_expr> ( ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) <additive_expr> )?
+<comparison_expr> ::= <additive_expr> ( <comp_op> <additive_expr> )*
 
 # Precedence Level 4: Addition/Subtraction (left-associative)
 <additive_expr> ::= <concat_expr> ( ( "+" | "-" ) <concat_expr> )*
@@ -64,8 +65,16 @@
 <multiplicative_expr> ::= <unary_expr> ( ( "*" | "/" ) <unary_expr> )*
 
 # Precedence Level 7: Unary Operators (right-associative)
-<unary_expr> ::= "!" <unary_expr> | <term>
+<unary_expr> ::= "!" <unary_expr> | <application>
 
+# Precedence Level 8: Function Application (left-associative)
+<application> ::= <atom>+
+
+# An <atom> is the new base case for expressions
+<atom> ::= <literal>
+         | <variable>
+         | <do_block>
+         | "(" <expr> ")"
 
 # =================================
 # 5. Terms and Literals (Highest Precedence)
@@ -82,8 +91,6 @@
          | "(" <expr> ")"
 
 <call> ::= <identifier> "(" ( <expr> ("," <expr>)* )? ")"
-
-<block> ::= "{" <expr>* "}"
 
 <do_block> ::= "do" <block>
 

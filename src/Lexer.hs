@@ -79,6 +79,9 @@ nextToken ('[' : rest) = (TokLBracket, rest)
 nextToken (']' : rest) = (TokRBracket, rest)
 nextToken (',' : rest) = (TokComma, rest)
 nextToken s@(c:_)
+  | isNumber c =
+    let (ident, rest') = span isNumber s
+    in case ident of x -> (TokNumber (read x :: Int), rest')
   | isAlpha c =
       let (ident, rest') = span isAlphaNum s
       in case ident of

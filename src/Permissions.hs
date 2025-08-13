@@ -23,25 +23,22 @@ gatherEffects globalEnv expr = case expr of
   LitInt _      -> []
   LitString _   -> []
   LitBool _     -> []
-  LitList elements -> concatMap (gatherEffects globalEnv) elements -- Recursively gather from list elements
+  LitList elements -> concatMap (gatherEffects globalEnv) elements
   Concat e1 e2  -> gatherEffects globalEnv e1 ++ gatherEffects globalEnv e2
   BinOp _ e1 e2 -> gatherEffects globalEnv e1 ++ gatherEffects globalEnv e2
   UnOp _ e1     -> gatherEffects globalEnv e1
   Block exprs   -> concatMap (gatherEffects globalEnv) exprs
   DoBlock exprs -> concatMap (gatherEffects globalEnv) exprs
-  Call name args ->
-    let argEffects = concatMap (gatherEffects globalEnv) args -- Effects from arguments themselves
-    in case Map.lookup name globalEnv of
-         -- If it's a known function (e.g., "print"), check its specific effects.
-         -- For user-defined functions, you might eventually store declared effects
-         -- in GlobalEnv along with types, or deduce from type/body.
-         -- For now, we'll hardcode "print" and assume others are pure or have unknown effects.
-         Just _ -> -- Function found in globalEnv (its type is known)
-           if name == "print"
-             then ConsoleWrite : argEffects
-             -- For other user-defined functions, you might need their declared effects.
-             -- For simplicity now, assume only built-ins have implicit effects or
-             -- effects are deduced during checkProgram.
-             else argEffects -- Default to no additional effects for other calls for now
-         Nothing -> -- Function not found (could be a type error, but effect checker tries best)
-           argEffects -- Cannot determine effects of unknown function
+
+  -- MODIFIED: Handle the Apply node
+  Apply funcExpr argExpr ->
+    let funcEffects = gatherEffects globalEnv funcExpr
+        argEffects  = gatherEffects globalEnv argExpr
+        callEffect  = case funcExpr of
+                        -- If we are directly calling a named function, check its effects
+                        Var "print" -> [ConsoleWrite]
+                        -- In a more advanced system, you'd look up the function's
+                        -- effect signature in the GlobalEnv. For now, we only
+                        -- hardcode built-ins.
+                        _           -> []
+    in callEffect ++ funcEffects ++ argEffects

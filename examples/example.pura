@@ -1,11 +1,23 @@
 greet : String -> String -> String
-let greet = (name,name2) => {"Hello, " ++ name ++ " and " ++ name2 ++ "!"} REQUIRES ConsoleWrite
+let greet = name => name2 => {
+  "Hello, " ++ name ++ " and " ++ name2 ++ "!"
+}
 
 greetAsa : String -> String
-let greetAsa = (name2) => {greet("Asa",name2)}
+let greetAsa = greet "Asa"
 
-main : Unit
-let main = () => {print(greet("Asa", "Kesa"))} REQUIRES ConsoleWrite
 
-main2 : Unit
-let main2 = () => {main()}
+x : String
+let x = "10"
+
+addOne : Int -> Int
+let addOne = x => {
+  x + 1
+}
+
+main : Int
+let main = addOne 5
+
+y : String
+let y = x
+

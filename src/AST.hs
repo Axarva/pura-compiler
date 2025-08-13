@@ -9,7 +9,7 @@ data Expr
   | LitBool Bool
   | LitList [Expr]
   | Concat Expr Expr
-  | Call String [Expr]
+  | Apply Expr Expr
   | BinOp BinOperator Expr Expr -- New: For binary operators (+, -, *, /, &&, ||, ==, !=, <, >, <=, >=)
   | UnOp UnOperator Expr      -- New: For unary operators (not)
   | Block [Expr]

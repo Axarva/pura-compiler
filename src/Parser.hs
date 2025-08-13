@@ -191,23 +191,35 @@ parseUnaryExpr =
       (do _ <- single L.TokBang -- Expect '!' for 'not'
           expr <- parseUnaryExpr -- Recursively parse the operand
           return (UnOp Not expr))
-  <|> parseTerm -- Fall through to terms after unary
+  <|> parseApplication -- Fall through to terms after unary
 
--- BNF: <term> ::= <call> | <string_literal> | <bool_literal> | <int_literal> | <variable> | <do_block> | <list_literal> | "(" <expr> ")"
--- Term level expressions: atomic values, function calls, parenthesized expressions
-parseTerm :: Parser Expr
-parseTerm =
-      parseCall             -- e.g., greet("World")
-  <|> parseStringLiteral
+-- NEW: Function application parsing (highest precedence)
+-- Parses one or more atoms, treating them as left-associative function calls.
+-- e.g., `f x y` becomes `Apply (Apply (Var "f") (Var "x")) (Var "y")`
+parseApplication :: Parser Expr
+parseApplication = do
+  exprs <- some parseAtom
+  return (foldl1 Apply exprs)
+
+-- NEW: Atomic expressions that can be applied
+-- This is the new base case for the expression hierarchy.
+parseAtom :: Parser Expr
+parseAtom =
+      parseStringLiteral
   <|> parseBoolLiteral
   <|> parseIntLiteral
-  <|> parseVariable
+  <|> try parseListLiteral
+  <|> try (do -- An identifier is a variable, UNLESS it's followed by a colon.
+              v <- parseVariable
+              notFollowedBy (single L.TokColon)
+              return v
+          )
   <|> parseDoBlock
-  <|> parseListLiteral  -- Add list literal parsing
   <|> (do _ <- single L.TokLParen
-          expr <- parseExpr -- Allow full expressions inside parentheses
+          expr <- parseExpr
           _ <- single L.TokRParen
           return expr)
+
 
 --------------------------------------------------------------------------------
 -- 4. Block and DoBlock Parsing
@@ -234,53 +246,28 @@ parseDoBlock = do
 -- 5. Function & Top-Level Declaration Parsing
 --------------------------------------------------------------------------------
 
--- BNF: <params> ::= "(" ( <param_name> ("," <param_name>)* )? ")"
--- Parses a function's parameter list (e.g., '(name, age)')
-parseParams :: Parser [String]
-parseParams = do
-  _ <- single L.TokLParen
-  params <- parseParamNames `sepBy` single L.TokComma
-  _ <- single L.TokRParen
-  return params
+parseParamName :: Parser String
+parseParamName = do L.TokIdentifier name <- satisfy isIdentifier'; return name
 
--- BNF: <param_name> ::= <identifier>
--- Parses individual parameter names
-parseParamNames :: Parser String
-parseParamNames = do
-  L.TokIdentifier name <- satisfy isIdentifier'
-  return name
-
--- BNF: <call> ::= <identifier> "(" ( <expr> ("," <expr>)* )? ")"
--- Parses a function call (e.g., `func(arg1, arg2)`)
-parseCall :: Parser Expr
-parseCall = try $ do -- 'try' allows backtracking if it looks like a call but isn't (e.g., just an identifier)
-  L.TokIdentifier fname <- satisfy isIdentifier'
-  _ <- single L.TokLParen  -- Must be '(' immediately after identifier for a call
-  args <- parseExpr `sepBy` single L.TokComma
-  _ <- single L.TokRParen
-  return (Call fname args)
-
--- BNF: <type_declaration> ::= <identifier> ":" <type>
--- Parses a standalone type declaration line (e.g., `myFunction : Int -> String`)
 parseTypeDeclaration :: Parser (String, Type)
 parseTypeDeclaration = do
-  L.TokIdentifier name <- satisfy isIdentifier' -- Function name
+  L.TokIdentifier name <- satisfy isIdentifier'
   _ <- single L.TokColon
   funcSig <- parseType
   return (name, funcSig)
 
--- BNF: <function_definition> ::= <let_start> <params> "=>" <block> <requires_clause>?
--- Parses a function definition (the `let name = (args) => { body } REQUIRES ...` part)
 parseFunctionDefinition :: Parser Function
 parseFunctionDefinition = do
   name <- parseLet
-  params <- parseParams
-  parseArrow
-  body <- parseBlock
+  -- `many` parses ZERO or more parameters.
+  -- - For `let x = 10`, it parses 0 parameters.
+  -- - For `let f = a => b => ...`, it parses 2 parameters.
+  params <- many (try (parseParamName <* parseArrow))
+  body <- parseBlock <|> parseExpr
   effects <- optional parseRequires
   let effectList = fromMaybe [] effects
-  -- Placeholder type signature; will be filled by parseProgram
-  return (Function name (TError "Type not yet assigned by top-level parser") params body effectList)
+  return (Function name (TError "Type not yet assigned") params body effectList)
+
 
 --------------------------------------------------------------------------------
 -- 6. Effect Parsing

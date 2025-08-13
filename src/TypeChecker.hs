@@ -44,7 +44,9 @@ inferExprType globalEnv localEnv expr = case expr of
   LitBool _   -> Right TBool
   Var name    -> case Map.lookup name localEnv of
                    Just t  -> Right t
-                   Nothing -> Left $ "Type error: Undeclared variable '" ++ name ++ "'"
+                   Nothing -> case Map.lookup name globalEnv of -- Fallback for global functions
+                                Just t -> Right t
+                                Nothing -> Left $ "Type error: Undeclared variable '" ++ name ++ "'"
 
   Concat e1 e2 -> do
     t1 <- inferExprType globalEnv localEnv e1
@@ -77,13 +79,15 @@ inferExprType globalEnv localEnv expr = case expr of
                then Right TBool
                else Left $ "Type error: Operator 'not' expects Bool operand, got " ++ show t1
 
-  Call fname args -> do
-    -- Lookup the function's type from the global environment
-    funcType <- case Map.lookup fname globalEnv of
-                  Just t -> Right t
-                  Nothing -> Left $ "Type error: Function '" ++ fname ++ "' not found."
-    -- Apply arguments one by one, updating the remaining function type
-    foldM (applyArgumentType globalEnv localEnv) funcType args
+  Apply funcExpr argExpr -> do
+    funcType <- inferExprType globalEnv localEnv funcExpr
+    argType <- inferExprType globalEnv localEnv argExpr
+    case funcType of
+      TArr expectedArgType returnType ->
+        if argType == expectedArgType
+        then Right returnType
+        else Left $ "Type mismatch: function expects argument of type " ++ show expectedArgType ++ " but was given " ++ show argType
+      _ -> Left $ "Type error: Cannot apply argument to non-function type " ++ show funcType
 
   Block exprs -> case reverse exprs of
     []        -> Right TUnit
@@ -151,15 +155,20 @@ checkFunctionDefinition globalEnv Function{funcName, funcTypeSignature, funcArgs
 -- Helper to unpack a curried function type into a list of argument types and a final return type.
 -- It also performs an arity check against the number of actual function arguments (`numArgs`).
 unpackFunctionType :: Type -> Int -> String -> Either String ([Type], Type)
-unpackFunctionType currentType numArgs funcName = go currentType [] numArgs
+unpackFunctionType funcType numArgs funcName = go funcType numArgs []
   where
-    go (TArr argType restType) accParams count =
-      if count > 0 -- Make sure we don't unpack more args than parameters listed in the function definition
-        then go restType (accParams ++ [argType]) (count - 1)
-        else Left $ "Type error in function '" ++ funcName ++ "': Declared type signature has too many arguments specified (expected " ++ show (length accParams + 1) ++ " based on signature, but function defines " ++ show numArgs ++ " params)."
-    go finalReturnType accParams 0 = Right (accParams, finalReturnType)
-    go _ _ _ = Left $ "Type error in function '" ++ funcName ++ "': Mismatch between declared type signature and number of arguments in definition. Check if type signature has too few arguments or is not a function type."
+    -- Base case: we have unpacked all the arguments we expected (numArgs is 0).
+    -- The `currentType` is the final return type.
+    go currentType 0 accParams = Right (reverse accParams, currentType)
 
+    -- Recursive step: If we still expect arguments (n > 0) and we have a function type...
+    go (TArr argType restType) n accParams =
+      -- ...unpack one argument type and recurse.
+      go restType (n - 1) (argType : accParams)
+
+    -- Error case: We still expect arguments (n > 0), but the type is not a function.
+    -- This means the type signature is not a function or doesn't have enough arguments.
+    go nonFuncType n _ = Left $ "Type error in '" ++ funcName ++ "': Type signature does not have enough arguments. Expected " ++ show numArgs ++ " but signature only provided " ++ show (numArgs - n) ++ ". Found non-function type: " ++ show nonFuncType
 
 --------------------------------------------------------------------------------
 -- 5. Top-Level Program Type Checker
