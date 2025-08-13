@@ -16,10 +16,10 @@ Demonstrate a functional programming language that compiles to JavaScript, suppo
 
 - [x] Finalize syntax design (done)
 - [x] Decide target output: JavaScript (chosen)
-- [ ] Implement currying + partial application support in:
-  - [ ] Parser
-  - [ ] Type checker
-  - [ ] Evaluator
+- [x] Implement currying + partial application support in:
+  - [x] Parser
+  - [x] Type checker
+  - [x] Evaluator
 - [ ] Implement JS codegen for curried functions
 - [ ] Write example programs to verify correctness
 - [ ] Document design choices (for the report and 中間発表)
