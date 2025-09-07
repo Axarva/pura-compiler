@@ -8,6 +8,7 @@ data Expr
   | LitString String
   | LitBool Bool
   | LitList [Expr]
+  | LitUnit
   | Concat Expr Expr
   | Apply Expr Expr
   | BinOp BinOperator Expr Expr -- New: For binary operators (+, -, *, /, &&, ||, ==, !=, <, >, <=, >=)

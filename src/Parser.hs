@@ -228,7 +228,12 @@ parseAtom =
       parseStringLiteral
   <|> parseBoolLiteral
   <|> parseIntLiteral
+  <|> try (do -- <<< ADD THIS BLOCK to parse the Unit literal '()'
+              _ <- single L.TokLParen
+              _ <- single L.TokRParen
+              return LitUnit)
   <|> try parseIfElse
+  <|> try parseBlock 
   <|> try parseListLiteral
   <|> try (do v <- parseVariable; notFollowedBy (single L.TokColon); return v)
   <|> parseDoBlock
@@ -242,7 +247,6 @@ parseAtom =
           _ <- single L.TokRParen
           return expr)
 
-
 --------------------------------------------------------------------------------
 -- 4. Block and DoBlock Parsing
 --------------------------------------------------------------------------------
@@ -251,7 +255,7 @@ parseAtom =
 parseBlock :: Parser Expr
 parseBlock = do
   _ <- single L.TokLBrace
-  exprs <- many parseExpr
+  exprs <- many (parseExpr <* single L.TokSemicolon)
   _ <- single L.TokRBrace
   return (Block exprs)
 

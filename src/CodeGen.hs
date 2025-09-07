@@ -10,6 +10,7 @@ generateExpr expr = case expr of
   LitInt n      -> show n
   LitBool b     -> if b then "true" else "false"
   LitString s   -> show s
+  LitUnit     -> "null" 
 
   -- A variable in Pura is a variable in JS.
   Var name      -> name
@@ -42,11 +43,13 @@ generateExpr expr = case expr of
   -- A block returns the value of its last expression.
   -- An Immediately Invoked Function Expression (IIFE) in JS is a perfect fit.
   Block exprs ->
-    case reverse exprs of
-      [] -> "(() => {})()" -- An empty block is a no-op
-      (lastExpr:rest) ->
-        let bodyStmts = map (\e -> generateExpr e ++ ";") (reverse rest)
-        in "(() => { " ++ concat bodyStmts ++ "return " ++ generateExpr lastExpr ++ "; })()"
+    -- case reverse exprs of
+    --   [] -> "(() => {})()" -- An empty block is a no-op
+    --   (lastExpr:rest) ->
+    --     let bodyStmts = map (\e -> generateExpr e ++ ";") (reverse rest)
+    --     in "(() => { " ++ concat bodyStmts ++ "return " ++ generateExpr lastExpr ++ "; })()"
+    let stmts = map (\e -> generateExpr e ++ ";") exprs
+    in "(() => { " ++ concat stmts ++ "})()"
 
   OpAsFunction op ->
     let opStr = case op of
@@ -66,7 +69,7 @@ generateExpr expr = case expr of
 
   IfThenElse cond thenExpr elseExpr ->
     "((" ++ generateExpr cond ++ ") ? (" ++ generateExpr thenExpr ++ ") : (" ++ generateExpr elseExpr ++ "))"
-    
+
       -- Other cases to add later...
   _ -> "/* unhandled AST node */"
 

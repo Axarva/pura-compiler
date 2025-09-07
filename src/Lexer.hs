@@ -23,6 +23,7 @@ data Token
   | TokStar
   | TokSlash
   | TokColon
+  | TokSemicolon
   | TokAmpAmp    -- (for &&)
   | TokPipePipe  -- (for ||)
   | TokBang      -- (for !)
@@ -88,6 +89,7 @@ nextToken ('=' : rest) = (TokEquals, rest)
 nextToken ('+' : '+' : rest) = (TokStrConcat, rest)  -- Match ++ first
 nextToken ('+' : rest) = (TokPlus, rest)            -- Then +
 nextToken (':' : rest) = (TokColon, rest)
+nextToken (';' : rest) = (TokSemicolon, rest)
 nextToken ('[' : rest) = (TokLBracket, rest)
 nextToken (']' : rest) = (TokRBracket, rest)
 nextToken (',' : rest) = (TokComma, rest)

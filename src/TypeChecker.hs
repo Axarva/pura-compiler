@@ -56,6 +56,7 @@ inferExprType globalEnv localEnv expr = case expr of
   LitInt _ -> Right TInt -- <<< THIS LINE WAS MISSING
   LitString _ -> Right TString
   LitBool _   -> Right TBool
+  LitUnit     -> Right TUnit
   Var name    -> case Map.lookup name localEnv of
                    Just t  -> Right t
                    Nothing -> case Map.lookup name globalEnv of -- Fallback for global functions

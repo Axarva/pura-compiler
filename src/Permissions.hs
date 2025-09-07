@@ -23,6 +23,7 @@ gatherEffects globalEnv expr = case expr of
   LitInt _      -> []
   LitString _   -> []
   LitBool _     -> []
+  LitUnit      -> []
   OpAsFunction _ -> []
   LitList elements -> concatMap (gatherEffects globalEnv) elements
   Concat e1 e2  -> gatherEffects globalEnv e1 ++ gatherEffects globalEnv e2
@@ -30,7 +31,7 @@ gatherEffects globalEnv expr = case expr of
   UnOp _ e1     -> gatherEffects globalEnv e1
   Block exprs   -> concatMap (gatherEffects globalEnv) exprs
   DoBlock exprs -> concatMap (gatherEffects globalEnv) exprs
-
+  IfThenElse cond thenE elseE -> gatherEffects globalEnv cond ++ gatherEffects globalEnv thenE ++ gatherEffects globalEnv elseE
   -- MODIFIED: Handle the Apply node
   Apply funcExpr argExpr ->
     let funcEffects = gatherEffects globalEnv funcExpr
