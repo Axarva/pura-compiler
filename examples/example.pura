@@ -14,7 +14,7 @@ addOne : Int -> Int
 let addOne = (+) 1
 
 main : Unit
-let main = print (toString (addOne 5))
+let main = print (addOne 5) REQUIRES ConsoleWrite
 
 y : String
 let y = x

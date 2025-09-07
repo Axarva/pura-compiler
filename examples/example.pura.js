@@ -8,4 +8,4 @@ const addOne = (a => b => a + b)(1);
 const y = x;
 
 // --- Execute Main ---
-addOne(5);
+print(addOne(5));
