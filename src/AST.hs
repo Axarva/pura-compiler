@@ -16,6 +16,7 @@ data Expr
   | DoBlock [Expr]
     -- NEW: Treat a binary operator itself as a value, e.g. (+)
   | OpAsFunction BinOperator
+  | IfThenElse Expr Expr Expr -- If-else statements finally
   deriving (Show, Eq)
 
 data BinOperator

@@ -1,11 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
+
 module TypeChecker where
 
 import AST
 import Types -- Import your Type definitions
 import qualified Data.Map as Map
+import Control.Monad
 -- import Control.Arrow -- Removed, as &&& is no longer used here
 
 -- Type environment for local variables (parameters, let-bound vars)
@@ -59,6 +61,18 @@ inferExprType globalEnv localEnv expr = case expr of
                    Nothing -> case Map.lookup name globalEnv of -- Fallback for global functions
                                 Just t -> Right t
                                 Nothing -> Left $ "Type error: Undeclared variable '" ++ name ++ "'"
+
+  IfThenElse cond thenExpr elseExpr -> do
+    condType <- inferExprType globalEnv localEnv cond
+    unless (condType == TBool) $
+      Left "Type error: 'if' condition must be a Boolean."
+
+    thenType <- inferExprType globalEnv localEnv thenExpr
+    elseType <- inferExprType globalEnv localEnv elseExpr
+
+    if thenType == elseType
+      then Right thenType -- The type of the whole expression is the type of the branches
+      else Left $ "Type error: 'then' and 'else' branches must have the same type. Got " ++ show thenType ++ " and " ++ show elseType
 
   Concat e1 e2 -> do
     t1 <- inferExprType globalEnv localEnv e1

@@ -6,6 +6,9 @@ data Token
   = TokLet
   -- Keywords and symbols
   | TokDo
+  | TokIf
+  | TokThen
+  | TokElse
   | TokEquals
   | TokLParen
   | TokRParen
@@ -86,6 +89,9 @@ nextToken s@(c:_)
       let (ident, rest') = span isAlphaNum s
       in case ident of
           "let" -> (TokLet, rest')
+          "if"  -> (TokIf, rest')
+          "then" -> (TokThen, rest')
+          "else" -> (TokElse, rest')
           "do"  -> (TokDo, rest')
           "REQUIRES" -> (TokRequires, rest')
           "True" -> (TokBoolLiteral True, rest')

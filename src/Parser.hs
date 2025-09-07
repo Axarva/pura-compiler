@@ -74,6 +74,15 @@ parseLet = do
   _ <- single L.TokEquals
   return name
 
+parseIfElse :: Parser Expr
+parseIfElse = do
+  _ <- single L.TokIf
+  cond <- parseExpr
+  _ <- single L.TokThen
+  thenBranch <- parseExpr
+  _ <- single L.TokElse
+  IfThenElse cond thenBranch <$> parseExpr
+
 -- BNF: <func_arrow> ::= "=>"
 -- Parses the '=>' arrow
 parseArrow :: Parser ()
@@ -219,6 +228,7 @@ parseAtom =
       parseStringLiteral
   <|> parseBoolLiteral
   <|> parseIntLiteral
+  <|> try parseIfElse
   <|> try parseListLiteral
   <|> try (do v <- parseVariable; notFollowedBy (single L.TokColon); return v)
   <|> parseDoBlock
@@ -342,7 +352,7 @@ parseProgram = do
   let duplicateDefs = findDuplicates (map funcName functionDefinitions)
   unless (null duplicateDefs) $
     fail $ "Error: Duplicate function definitions for: " -- ++ show duplicateDefs
-    
+
   _ <- single L.TokEOF -- This line remains at the end
   eof -- Make sure there's nothing after the EOF token
   return functionsWithTypes

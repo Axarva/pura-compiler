@@ -13,8 +13,8 @@ let x = "10"
 addOne : Int -> Int
 let addOne = (+) 1
 
-main : Int
-let main = addOne 5
+main : Unit
+let main = print (toString (addOne 5))
 
 y : String
 let y = x

@@ -1,4 +1,3 @@
--- In Main.hs
 module Main where
 
 import System.Environment (getArgs)
@@ -7,7 +6,10 @@ import Lexer (tokenize)
 import Parser (parseProgram)
 import TypeChecker (checkProgram, GlobalEnv)
 import Permissions (checkFunction)
-import AST (Function)
+import AST (Function(..))
+
+import qualified CodeGen as CG
+import Data.List (partition)
 
 main :: IO () -- Corrected type signature
 main = do
@@ -54,12 +56,38 @@ main = do
                 Right _ -> do
                   putStrLn "Effect checking successful!"
 
-                  -- 5. Code Generation (Uncomment when ready)
-                  -- putStrLn "Generating code..."
-                  -- let generatedCode = generateCode functions
-                  -- putStrLn "--- Generated Code ---"
-                  -- putStrLn generatedCode
-                  -- putStrLn "----------------------"
-                  -- writeFile (filePath ++ ".js") generatedCode
+                  -- 5. Code Generation
+                  putStrLn "Generating code..."
+
+                  -- Separate the main function from the rest
+                  let (mainFuncs, otherFuncs) = partition (\f -> funcName f == "main") functions
+
+                  case mainFuncs of
+                    -- Handle case where no main function is defined
+                    [] -> putStrLn "Compilation warning: No main function found. Nothing to execute."
+
+                    -- This is the success case, where exactly one main function exists
+                    [mainFunc] -> do
+                      let prelude = "const print = console.log;\nconst toString = (x) => x.toString();\n\n"
+
+                      -- Generate 'const' declarations for all non-main functions
+                      let otherFuncCode = unlines $ map CG.generateFunction otherFuncs
+
+                      -- For main, just generate the code for its body expression
+                      let mainExprCode = CG.generateExpr (funcBody mainFunc)
+
+                      -- Combine everything into the final JS file
+                      let generatedCode = prelude ++ otherFuncCode ++ "\n// --- Execute Main ---\n" ++ mainExprCode ++ ";\n"
+                      
+                      putStrLn "--- Generated Code ---"
+                      putStrLn generatedCode
+                      putStrLn "----------------------"
+
+                      let outPath = filePath ++ ".js"
+                      writeFile outPath generatedCode
+                      putStrLn $ "Successfully wrote generated code to " ++ outPath
+
+                    -- Handle case where multiple main functions are defined
+                    _ -> putStrLn "Compilation error: Multiple main functions defined."
 
     _ -> putStrLn "Usage: pura-compiler <filepath>"
