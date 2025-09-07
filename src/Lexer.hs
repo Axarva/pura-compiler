@@ -1,6 +1,7 @@
 module Lexer where
 
 import Data.Char
+import Data.List (isPrefixOf)
 
 data Token
   = TokLet
@@ -47,12 +48,21 @@ data Token
   deriving (Show, Eq, Ord)
 
 tokenize :: String -> [Token]
-tokenize "" = [TokEOF]
 tokenize s =
-  let (tok, rest) = nextToken (dropWhile isSpace s)
-  in case tok of
-       TokEOF -> [TokEOF]
-       _      -> tok : tokenize rest
+  let stripped = strip s
+  in if null stripped
+       then [TokEOF]
+       else let (tok, rest) = nextToken stripped
+            in tok : tokenize rest
+
+strip :: String -> String
+strip s =
+  let afterSpace = dropWhile isSpace s
+  in if "--" `isPrefixOf` afterSpace
+       -- If we find a comment, drop the whole line and try stripping again
+       then strip (dropWhile (/= '\n') afterSpace)
+       -- Otherwise, the string is clean and ready for the next token
+       else afterSpace
 
 
 nextToken :: String -> (Token, String)

@@ -1,0 +1,33 @@
+-- tree.pura
+-- A program to generate a recursive ASCII art tree.
+
+-- A helper function that prints a string with a given amount of indentation.
+-- It uses recursion to print the spaces.
+let printIndented indent str =
+  if indent > 0 then {
+    print "  "
+    printIndented (indent - 1) str
+  } else {
+    print str
+  }
+
+-- The main recursive function to draw a tree of a given 'size'.
+-- For each level, it draws a branch and then recursively calls itself
+-- twice to draw two smaller sub-trees.
+let drawTree size indent =
+  if size > 0 then {
+    printIndented indent "*"
+    drawTree (size - 1) (indent + 1)
+    drawTree (size - 1) (indent + 1)
+  } else {
+    -- This is the base case for the recursion (a leaf).
+    -- We return a Unit value, '()', which means "do nothing".
+    ()
+  }
+
+-- The main entry point of our program.
+let main = {
+  print "--- Generating Recursive Tree ---"
+  drawTree 4 0
+  print "-------------------------------"
+} REQUIRES ConsoleWrite
