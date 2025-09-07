@@ -105,15 +105,35 @@ inferExprType globalEnv localEnv expr = case expr of
                then Right TBool
                else Left $ "Type error: Operator 'not' expects Bool operand, got " ++ show t1
 
-  Apply funcExpr argExpr -> do
-    funcType <- inferExprType globalEnv localEnv funcExpr
-    argType <- inferExprType globalEnv localEnv argExpr
-    case funcType of
-      TArr expectedArgType returnType ->
-        if argType == expectedArgType
-        then Right returnType
-        else Left $ "Type mismatch: function expects argument of type " ++ show expectedArgType ++ " but was given " ++ show argType
-      _ -> Left $ "Type error: Cannot apply argument to non-function type " ++ show funcType
+  -- Original Apply that should be used once typeclasses are implemented
+  -- Apply funcExpr argExpr -> do
+  --   funcType <- inferExprType globalEnv localEnv funcExpr
+  --   argType <- inferExprType globalEnv localEnv argExpr
+  --   case funcType of
+  --     TArr expectedArgType returnType ->
+  --       if argType == expectedArgType
+  --       then Right returnType
+  --       else Left $ "Type mismatch: function expects argument of type " ++ show expectedArgType ++ " but was given " ++ show argType
+  --     _ -> Left $ "Type error: Cannot apply argument to non-function type " ++ show funcType
+
+  Apply funcExpr argExpr ->
+    case funcExpr of
+      -- Special case for our new polymorphic 'print' function
+      Var "print" -> do
+        _ <- inferExprType globalEnv localEnv argExpr -- We still type-check the argument to make sure it's valid.
+        Right TUnit -- The 'print' function always returns a value of type Unit.
+
+      -- Default case for all other function calls (this is the original logic)
+      _ -> do
+        funcType <- inferExprType globalEnv localEnv funcExpr
+        argType <- inferExprType globalEnv localEnv argExpr
+        case funcType of
+          TArr expectedArgType returnType ->
+            if argType == expectedArgType
+              then Right returnType
+              else Left $ "Type mismatch: function expects argument of type " ++ show expectedArgType ++ " but was given " ++ show argType
+          _ -> Left $ "Type error: Cannot apply argument to non-function type " ++ show funcType
+
 
   Block exprs -> case reverse exprs of
     []        -> Right TUnit

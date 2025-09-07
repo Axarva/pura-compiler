@@ -64,9 +64,10 @@ generateExpr expr = case expr of
           Ge  -> ">="
       in "(a => b => a " ++ opStr ++ " b)"
 
-  -- Other cases to add later...
   IfThenElse cond thenExpr elseExpr ->
     "((" ++ generateExpr cond ++ ") ? (" ++ generateExpr thenExpr ++ ") : (" ++ generateExpr elseExpr ++ "))"
+    
+      -- Other cases to add later...
   _ -> "/* unhandled AST node */"
 
 generateFunction :: Function -> String
