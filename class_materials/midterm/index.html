@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+	<meta charset="utf-8">
+	<title>Pura Compiler Presentation</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@700&family=Fira+Code&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/serif.min.css" id="theme">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css">
+
+	<style>
+		:root {
+			--r-main-font: 'Noto Sans JP', sans-serif;
+			--r-heading-font: 'Noto Serif JP', serif;
+			--r-code-font: 'Fira Code', monospace;
+			--r-heading-color: #222;
+			--r-main-color: #333;
+			--r-background-color: #fdfdfd; /* Base color for the gradient */
+			--accent-color: #005fcc;
+		}
+
+		/* FIX: Subtle textured background for a more professional feel */
+		.reveal {
+			background-color: var(--r-background-color);
+			background-image: linear-gradient(rgba(0, 0, 0, 0.02) .1em, transparent .1em), linear-gradient(90deg, rgba(0, 0, 0, 0.02) .1em, transparent .1em);
+			background-size: 2em 2em;
+		}
+
+		/* Typography & Layout Fixes */
+		.reveal {
+			font-family: var(--r-main-font);
+			color: var(--r-main-color);
+			font-size: 32px;
+		}
+		.reveal h1 { font-size: 2.2em; }
+		.reveal h2 { font-size: 1.6em; }
+		.reveal p, .reveal li { line-height: 1.5; }
+		.reveal .english-subtitle { font-size: 0.6em; margin-top: -15px; margin-bottom: 30px; color: #777; font-family: var(--r-main-font); font-weight: 400; }
+		.reveal .highlight { color: var(--accent-color); }
+		/* FIX: Better Japanese word wrapping */
+		.reveal p, .reveal li { word-break: keep-all; }
+
+		/* Two-Column Layout (Prevents Overflow) */
+		.two-column { display: flex; gap: 40px; align-items: flex-start; }
+		.two-column > div { flex: 1; min-width: 0; }
+
+		/* Formal Code Block Styling */
+		.code-block { background-color: #fff; border-radius: 5px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin: 15px auto; }
+		.code-block-header { background-color: #f0f0f0; padding: 8px 15px; font-size: 0.7em; color: #555; border-bottom: 1px solid #ddd; border-top-left-radius: 5px; border-top-right-radius: 5px; font-family: var(--r-code-font); }
+		.code-block pre { margin: 0 !important; width: 100% !important; box-shadow: none !important; }
+		.code-block code { max-height: 400px !important; }
+
+		/* FIX: Finer alignment and thicker lines for AST tree */
+		.ast-tree { list-style-type: none; position: relative; padding-left: 25px; font-family: var(--r-code-font); font-size: 0.7em; text-align: left; line-height: 1.6; }
+		.ast-tree ul { padding-left: 25px; position: relative; }
+		.ast-tree li { position: relative; padding-left: 5px; }
+		.ast-tree li::before, .ast-tree li::after { content: ''; position: absolute; left: -20px; }
+		.ast-tree li::before { border-top: 2px solid #555; top: 14px; width: 15px; }
+		.ast-tree li::after { border-left: 2px solid #555; height: 100%; top: 0; }
+		.ast-tree li:last-child::after { height: 14px; }
+		.ast-tree .type { color: #005fcc; font-style: italic; }
+
+		/* Tokenization animation styles */
+		.token-container { display: flex; flex-wrap: wrap; justify-content: center; }
+		.token-box { text-align: center; margin: 5px; }
+		.token-box .label { font-size: 0.6em; padding: 3px 8px; border-radius: 4px; color: white; display: inline-block; }
+		.token-kw { background-color: #d73a49; }
+		.token-id { background-color: #6f42c1; }
+		.token-op { background-color: #005cc5; }
+		.token-num { background-color: #e36209; }
+		.token-punct { background-color: #586069; }
+
+		/* FIX: Prevent overflow on analysis result text */
+		.analysis-result { font-size: 0.9em; }
+		/* Styling for the "Pura in Action" slide */
+		.action-container {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 20px;
+		}
+
+		.action-container .column {
+			flex: 1;
+			text-align: center;
+		}
+
+		.action-container .arrow {
+			flex: 0 0 auto; /* Don't grow or shrink */
+			font-size: 5em;
+			color: var(--accent-color);
+		}
+
+		.action-container img {
+			max-width: 100%;
+			height: auto;
+			border-radius: 8px;
+			box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+			border: 1px solid #ddd;
+		}
+
+		.action-container .caption {
+			font-size: 0.6em;
+			margin-top: 15px;
+			color: #555;
+		}
+
+	</style>
+</head>
+
+<body>
+	<div class="reveal">
+		<div class="slides">
+			
+			<section>
+				<h1>Pura: UIデザインのための関数型言語</h1>
+				<p class="english-subtitle">Pura: A Functional Language for UI Design</p>
+				<div style="margin-top: 50px; text-align: center; display: inline-block; font-size: 0.8em;">
+					<p><b>2025年度 情報メディア特別演習Ⅰ</b></p>
+					<p>ティムシナ　アサルヴァ (202513228)</p>
+					<p>アドバイザー教員: 中井 央</p>
+				</div>
+			</section>
+
+			<section>
+				<h2>ビジョン：<span class="highlight">信頼性</span>の高いUI開発</h2>
+				<p class="english-subtitle">The Vision: Reliable UI Development</p>
+				<div class="two-column">
+					<div>
+						<p><b>課題：従来のUI開発</b></p>
+						<ul>
+							<li>複雑な状態管理</li>
+							<li>予測不能な副作用</li>
+							<li>結果として、コードにバグが入りやすい</li>
+						</ul>
+					</div>
+					<div class="fragment">
+						<p><b>Puraによる解決策</b></p>
+						<ul>
+							<li><b>宣言的な記述:</b> <code>UI = f(State)</code></li>
+							<li><b>予測可能な動作:</b> 副作用を排除</li>
+							<li><b>高い信頼性:</b> 型とエフェクトシステム</li>
+						</ul>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>コンパイラとは何か？</h2>
+				<p class="english-subtitle">What is a Compiler?</p>
+				<p>「人間の書いたコード」を「コンピュータが実行できるコード」に<span class="highlight">翻訳</span>するプログラム。</p>
+				<ul style="font-size: 0.8em; margin-top: 20px;">
+					<li class="fragment"><b>字句解析:</b> コードを「トークン」に分割する。</li>
+					<li class="fragment"><b>構文解析:</b> トークンから木構造（AST）を構築する。</li>
+					<li class="fragment"><b>意味解析:</b> 型やエフェクトの正しさを検証する。</li>
+					<li class="fragment"><b>コード生成:</b> ASTをターゲット言語に変換する。</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>プログラム例：高階関数</h2>
+				<p class="english-subtitle">Example Program: Higher-Order Functions</p>
+				<p>高階関数<code>map</code>を定義し、リストの各要素を2倍にするプログラムです。</p>
+				<div class="code-block">
+					<div class="code-block-header">map.pura</div>
+					<div class="fragment" data-fragment-index="1">
+						<pre><code class="language-haskell" data-trim>let double x = x * 2</code></pre>
+					</div>
+					<div class="fragment" data-fragment-index="2">
+						<pre><code class="language-haskell" data-trim>
+							let map f list =
+							if list == [] then []
+							else (f (head list)) : (map f (tail list))
+													</code></pre>
+												</div>
+												<div class="fragment" data-fragment-index="3">
+													<pre><code class="language-haskell" data-trim>
+							let main = print (map double [10, 20, 30]) -->[20, 40, 60]
+							REQUIRES ConsoleWrite
+						</code></pre>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>ステージ1：字句解析</h2>
+				<p class="english-subtitle">Stage 1: Tokenization</p>
+				<p>ソースコードを意味のある最小単位「トークン」の連続に分解します。</p>
+				<div class="code-block">
+					<div class="code-block-header">Source Code</div>
+					<pre><code>let main = print [20, 40]</code></pre>
+				</div>
+				<div class="token-container" style="margin-top: 20px;">
+					<div class="token-box fragment"><pre><code>let</code></pre><span class="label token-kw">Keyword</span></div>
+					<div class="token-box fragment"><pre><code>main</code></pre><span class="label token-id">Identifier</span></div>
+					<div class="token-box fragment"><pre><code>=</code></pre><span class="label token-op">Operator</span></div>
+					<div class="token-box fragment"><pre><code>print</code></pre><span class="label token-id">Identifier</span></div>
+					<div class="token-box fragment"><pre><code>[</code></pre><span class="label token-punct">Punctuation</span></div>
+					<div class="token-box fragment"><pre><code>20</code></pre><span class="label token-num">Number</span></div>
+					<div class="token-box fragment"><pre><code>,</code></pre><span class="label token-punct">Punctuation</span></div>
+					<div class="token-box fragment"><pre><code>40</code></pre><span class="label token-num">Number</span></div>
+					<div class="token-box fragment"><pre><code>]</code></pre><span class="label token-punct">Punctuation</span></div>
+				</div>
+			</section>
+			
+			<section>
+				<h2>ステージ2：構文解析 (AST)</h2>
+				<p class="english-subtitle">Stage 2: Parsing (AST)</p>
+				<p>トークンの列から、コードの文法構造を表す木（抽象構文木）を構築します。</p>
+				<ul class="ast-tree">
+					<li class="fragment">Apply
+						<ul>
+							<li class="fragment">Var "print"</li>
+							<li class="fragment">Apply
+								<ul>
+									<li class="fragment">Var "map"</li>
+									<li class="fragment">Var "double"</li>
+									<li class="fragment">LitList
+										<ul>
+											<li>LitInt 10</li>
+											<li>LitInt 20</li>
+											<li>LitInt 30</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>ステージ3：型検査</h2>
+				<p class="english-subtitle">Stage 3: Type Checking</p>
+				<p>全ての式の型が正しく使われているかを検証し、安全性を保証します。</p>
+				<ul class="ast-tree">
+					<li>Apply <span class="fragment type">:: Unit</span>
+						<ul>
+							<li>Var "print" <span class="fragment type">:: List Int -> Unit</span></li>
+							<li>Apply <span class="fragment type">:: List Int</span>
+								<ul>
+									<li>Var "map" <span class="fragment type">:: (Int -> Int) -> List Int -> List Int</span></li>
+									<li>Var "double" <span class="fragment type">:: Int -> Int</span></li>
+									<li>LitList <span class="fragment type">:: List Int</span></li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>ステージ4：エフェクト検査</h2>
+				<p class="english-subtitle">Stage 4: Effect Checking</p>
+				<p>副作用（I/Oなど）を<span class="highlight">明示的に宣言</span>させることで、コードの安全性を高めます。</p>
+				<div class="two-column">
+					<div class="fragment">
+						<p><b>純粋関数 (Pure)</b></p>
+						<div class="code-block">
+							<div class="code-block-header">map.pura</div>
+							<pre><code class="language-haskell" data-trim>let map f list = ...</code></pre>
+						</div>
+						<p class="analysis-result" style="color: green;">✅ 解析結果: 副作用なし。安全。</p>
+					</div>
+					<div class="fragment">
+						<p><b>不純な関数 (Impure)</b></p>
+						<div class="code-block">
+							<div class="code-block-header">main.pura</div>
+							<pre><code class="language-haskell" data-trim>let main = print [...]
+REQUIRES ConsoleWrite -->ポイント</code></pre>
+						</div>
+						<p class="analysis-result" style="color: green;">✅ 解析結果: 副作用が正しく宣言済。安全。</p>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>ステージ5：コード生成</h2>
+				<p class="english-subtitle">Stage 5: Code Generation</p>
+				<p>検証済みのASTを、実行可能なJavaScriptコードに変換します。</p>
+				<div class="code-block">
+					<div class="code-block-header">output.js</div>
+					<div class="fragment">
+						<pre><code class="language-javascript" data-trim>const double = function(x) { return (x * 2); };</code></pre>
+					</div>
+					<div class="fragment">
+						<pre><code class="language-javascript" data-trim>const map = function(f) { /* ... recursive logic ... */ };</code></pre>
+					</div>
+					<div class="fragment">
+						<pre><code class="language-javascript" data-trim>
+// --- Execute Main ---
+print(map(double)([10, 20, 30]));
+						</code></pre>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>最終的な実行</h2>
+				<p class="english-subtitle">Final Execution</p>
+				<div class="code-block fragment">
+					<div class="code-block-header">terminal</div>
+					<pre><code class="language-bash" data-trim>$ node output.js</code></pre>
+				</div>
+				<div class="code-block fragment">
+					<div class="code-block-header">output</div>
+					<pre><code data-trim>[20, 40, 60]</code></pre>
+				</div>
+			</section>
+			<section>
+				<h2>Puraの実演</h2>
+				<p class="english-subtitle">（Pura in Action）</p>
+
+				<div class="action-container">
+					<div class="column fragment">
+						<img src="unnamed.png" alt="Pura Source Code for the symmetrical tree" width="300" height="500">
+						<p class="caption">Puraのソースコード</p>
+					</div>
+
+					<div class="column arrow fragment">
+						<span>→</span>
+					</div>
+
+					<div class="column fragment">
+            <img src="Untitled design.gif" alt="Animated output of the compiled program" width="400"> 
+						<p class="caption">コンパイル・実行結果</p>
+					</div>
+				</div>
+			</section>
+			<section>
+				<h2>進捗と今後の展望</h2>
+				<p class="english-subtitle">Progress & Future Vision</p>
+				<ul>
+					<li class="fragment"><b>現状:</b> 関数型言語のコアコンパイラが完成し、動作しています。</li>
+					<li class="fragment"><b>今後の目標 (12月まで):</b> Model-View-Update (MVU) アーキテクチャを導入し、UI構築を開始します。</li>
+				</ul>
+				<p class="fragment" style="margin-top: 40px;">最終的な目標は、このプレゼンテーションツールのようなアプリケーションを、<span class="highlight">Pura自身で開発することです</span>。</p>
+			</section>
+			<section>
+				<h2>ご清聴ありがとうございました</h2>
+				<p class="english-subtitle">Thank You</p>
+				<p style="margin-top: 50px;">質疑応答</p>
+			</section>
+
+		</div>
+	</div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/highlight/highlight.min.js"></script>
+	<script>
+		Reveal.initialize({
+			hash: true,
+			plugins: [ RevealHighlight ],
+			transition: 'fade', // A more formal transition
+			width: 1280,
+			height: 720
+		});
+	</script>
+</body>
+
+</html>
