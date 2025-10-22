@@ -1,8 +1,25 @@
--- In CodeGen.hs
 module CodeGen where
 
 import AST
 import Types
+
+mapBuiltin :: String -> String
+mapBuiltin name = case name of
+  -- HTML Elements
+  "div"    -> "PuraRuntime.elem('div')"
+  "p"      -> "PuraRuntime.elem('p')"
+  "button" -> "PuraRuntime.elem('button')"
+  "h1"     -> "PuraRuntime.elem('h1')"
+  -- Text Node
+  "text"   -> "PuraRuntime.text"
+  -- Event Handlers
+  "onClick" -> "PuraRuntime.on('click')"
+  -- Utility Functions
+  "toString" -> "String"
+  "print"    -> "PuraRuntime.print"
+  -- Default Case: it's a user-defined variable
+  _        -> name
+
 
 generateExpr :: Expr -> String
 generateExpr expr = case expr of
@@ -13,7 +30,7 @@ generateExpr expr = case expr of
   LitUnit     -> "null" 
 
   -- A variable in Pura is a variable in JS.
-  Var name      -> name
+  Var name -> mapBuiltin name
 
   -- Binary operators map directly to JS operators.
   -- Parentheses are crucial to preserve precedence!
@@ -81,3 +98,72 @@ generateCurriedFunction :: [String] -> Expr -> String
 generateCurriedFunction [] body = generateExpr body -- Base case: no more arguments
 generateCurriedFunction (arg:rest) body =
   "function(" ++ arg ++ ") { return " ++ generateCurriedFunction rest body ++ "; }"
+
+
+generateProgram :: [Function] -> String
+generateProgram funcs =
+  let compiledFunctions = unlines (map generateFunction funcs)
+      runtime = puraRuntimeJS
+      mainLoop = mainLoopJS
+  in runtime ++ "\n\n" ++ compiledFunctions ++ "\n\n" ++ mainLoop
+
+puraRuntimeJS :: String
+puraRuntimeJS = unlines
+  [ "const PuraRuntime = {"
+  , "  elem: (tag) => (attrs) => (children) => ({ tag, attrs, children, key: null }),"
+  , "  text: (str) => ({ tag: 'TEXT_NODE', text: String(str) }),"
+  , "  on: (eventName) => (msg) => ({ type: 'event', name: eventName, msg: msg }),"
+  , "  print: (str) => console.log(str)"
+  , "};"
+  ]
+
+mainLoopJS :: String
+mainLoopJS = unlines
+  [ "// --- MVU Main Loop ---"
+  , "function mount(selector, program) {"
+  , "  const root = document.querySelector(selector);"
+  , "  let model = program.initialModel;"
+  , ""
+  , "  const dispatch = (msg) => {"
+  , "    model = program.update(msg)(model);"
+  , "    render();"
+  , "  };"
+  , ""
+  , "  function renderNode(vnode) {"
+  , "    if (vnode.tag === 'TEXT_NODE') {"
+  , "      return document.createTextNode(vnode.text);"
+  , "    }"
+  , "    const el = document.createElement(vnode.tag);"
+  , "    vnode.attrs.forEach(attr => {"
+  , "      if (attr.type === 'event') {"
+  , "        el.addEventListener(attr.name, () => dispatch(attr.msg));"
+  , "      }"
+  , "      // Add other attribute types here (e.g., className)"
+  , "    });"
+  , "    vnode.children.forEach(child => {"
+  , "      el.appendChild(renderNode(child));"
+  , "    });"
+  , "    return el;"
+  , "  }"
+  , ""
+  , "  function render() {"
+  , "    const newView = program.view(model);"
+  , "    root.innerHTML = ''; // Simple and inefficient, but works for a demo!"
+  , "    root.appendChild(renderNode(newView));"
+  , "  }"
+  , ""
+  , "  render();"
+  , "}"
+  , ""
+  , "function safeMount() {"
+  , "  const hasMVU = typeof view !== 'undefined' && typeof update !== 'undefined' && typeof initialModel !== 'undefined';"
+  , "  if (hasMVU) {"
+  , "    mount('#app', { initialModel, update, view });"
+  , "  } else {"
+  , "    //console.log('Running as a script...');"
+  , "    if (typeof main === 'function') main();"
+  , "  }"
+  , "}"
+  , ""
+  , "safeMount();"
+  ]

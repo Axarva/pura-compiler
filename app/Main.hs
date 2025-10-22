@@ -1,17 +1,18 @@
 module Main where
 
 import System.Environment (getArgs)
-import Text.Megaparsec (parse)
+import Text.Megaparsec (runParser, errorBundlePretty) -- Changed 'parse' to 'runParser' for clarity
 import Lexer (tokenize)
 import Parser (parseProgram)
-import TypeChecker (checkProgram, GlobalEnv)
+import TypeChecker (checkProgram)
 import Permissions (checkFunction)
 import AST (Function(..))
 
 import qualified CodeGen as CG
 import Data.List (partition)
+import System.FilePath (replaceExtension) -- For creating the output file path
 
-main :: IO () -- Corrected type signature
+main :: IO ()
 main = do
   args <- getArgs
   case args of
@@ -21,73 +22,40 @@ main = do
 
       -- 1. Lexing
       let tokens = tokenize sourceCode
-      putStrLn "--- Tokens ---"
       print tokens
-      putStrLn "--------------"
 
       -- 2. Parsing
-      case parse parseProgram filePath tokens of
-        Left err -> do
-          putStrLn "Parsing failed!"
-          -- Print the raw Megaparsec error bundle. It will be verbose but will compile.
-          print err
+      case runParser parseProgram filePath tokens of
+        Left errBundle -> do
+          putStrLn "--- Parsing Failed ---"
+          putStrLn (errorBundlePretty errBundle)
         Right functions -> do
-          putStrLn "Parsing successful!"
-          putStrLn "--- AST ---"
-          print functions
-          putStrLn "-----------"
+          putStrLn "--- Parsing Successful ---"
 
           -- 3. Type Checking
           case checkProgram functions of
             Left errMsg -> do
-              putStrLn "Type checking failed!"
+              putStrLn "--- Type Checking Failed ---"
               putStrLn errMsg
             Right globalEnv -> do
-              putStrLn "Type checking successful!"
-              -- putStrLn "--- Global Type Environment ---"
-              -- print globalEnv
-              -- putStrLn "-----------------------------"
+              putStrLn "--- Type Checking Successful ---"
 
               -- 4. Effect Checking
-              case mapM (checkFunction globalEnv) functions of
+              case mapM_ (checkFunction globalEnv) functions of
                 Left errMsg -> do
-                  putStrLn "Effect checking failed!"
+                  putStrLn "--- Effect Checking Failed ---"
                   putStrLn errMsg
-                Right _ -> do
-                  putStrLn "Effect checking successful!"
+                Right () -> do
+                  putStrLn "--- Effect Checking Successful ---"
 
-                  -- 5. Code Generation
-                  putStrLn "Generating code..."
-
-                  -- Separate the main function from the rest
-                  let (mainFuncs, otherFuncs) = partition (\f -> funcName f == "main") functions
-
-                  case mainFuncs of
-                    -- Handle case where no main function is defined
-                    [] -> putStrLn "Compilation warning: No main function found. Nothing to execute."
-
-                    -- This is the success case, where exactly one main function exists
-                    [mainFunc] -> do
-                      let prelude = "const print = console.log;\nconst toString = (x) => x.toString();\n\n"
-
-                      -- Generate 'const' declarations for all non-main functions
-                      let otherFuncCode = unlines $ map CG.generateFunction otherFuncs
-
-                      -- For main, just generate the code for its body expression
-                      let mainExprCode = CG.generateExpr (funcBody mainFunc)
-
-                      -- Combine everything into the final JS file
-                      let generatedCode = prelude ++ otherFuncCode ++ "\n// --- Execute Main ---\n" ++ mainExprCode ++ ";\n"
-                      
-                      putStrLn "--- Generated Code ---"
-                      putStrLn generatedCode
-                      putStrLn "----------------------"
-
-                      let outPath = filePath ++ ".js"
-                      writeFile outPath generatedCode
-                      putStrLn $ "Successfully wrote generated code to " ++ outPath
-
-                    -- Handle case where multiple main functions are defined
-                    _ -> putStrLn "Compilation error: Multiple main functions defined."
+                  -- 5. Code Generation for MVU
+                  putStrLn "--- Generating Code ---"
+                  let outPath = replaceExtension filePath ".js"
+                  let generatedCode = CG.generateProgram functions -- Using the function from CodeGen.hs
+                  
+                  writeFile outPath generatedCode
+                  putStrLn generatedCode
+                  putStrLn "----------------------"
+                  putStrLn $ "Successfully wrote generated code to " ++ outPath
 
     _ -> putStrLn "Usage: pura-compiler <filepath>"

@@ -22,3 +22,8 @@
 
 2025/08/06
 - Consider directly implementing html into the language rather than a way to represent it
+
+2025/10/22
+- Implement basic unification algorithm for empty lists
+- Implement Msg primitives for Html types
+- Rethink semicolon placements in blocks and remove them as terminators

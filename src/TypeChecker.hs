@@ -148,7 +148,7 @@ inferExprType globalEnv localEnv expr = case expr of
   -- List Literals
   LitList elements ->
     if null elements
-      then Right (TList TUnit) -- Or a more generic empty list type (e.g., TList TVar if you had polymorphism)
+      then Right (TList TUnit) -- TODO: TList TVar if we had polymorphism
       else do
         firstType <- inferExprType globalEnv localEnv (head elements)
         restTypes <- mapM (inferExprType globalEnv localEnv) (tail elements)
@@ -226,23 +226,39 @@ unpackFunctionType funcType numArgs funcName = go funcType numArgs []
 -- The main entry point for type checking the entire program
 checkProgram :: [Function] -> Either String GlobalEnv
 checkProgram funcs = do
-  -- 1. Initialize the global environment with built-in function types.
-  let initialGlobalEnv = Map.singleton "print" (TArr TString TUnit)
+  -- The type for an element function like `div`, `p`, `h1`, etc.
+  -- It takes `List Attribute -> List (Html Msg) -> Html Msg`
+  let elemType = TArr (TList TAttribute)
+                      (TArr (TList (THtml TMsg)) (THtml TMsg))
 
-  -- 2. First Pass: Populate GlobalEnv with *declared* function signatures directly.
-  --    The parser should have already ensured `funcTypeSignature` is filled and that
-  --    all defined functions have a type signature.
-  let userFuncSignatures = Map.fromList $ map (\f -> (funcName f, funcTypeSignature f)) funcs
+  -- Built-in HTML element types
+  let htmlBuiltInTypes = Map.fromList
+        [ ("div", elemType)
+        , ("p", elemType)
+        , ("button", elemType)
+        , ("h1", elemType)
+        , ("text", TArr TString (THtml TMsg))
+        , ("onClick", TArr TMsg TAttribute)
+        ]
 
-  -- 3. Combine built-in and user-defined signatures into a complete global environment.
+  -- Non-HTML built-in functions (standard library)
+  let stdBuiltInFuncs =
+        let others = Map.singleton "toString" (TArr TInt TString)
+        in Map.union others (Map.singleton "print" (TArr TString TUnit))
+
+  -- Merge HTML and standard built-ins
+  let initialGlobalEnv = Map.union htmlBuiltInTypes stdBuiltInFuncs
+
+  -- 1st pass: gather user function signatures
+  let userFuncSignatures =
+        Map.fromList $ map (\f -> (funcName f, funcTypeSignature f)) funcs
+
+  -- Combine built-ins and user-defined signatures
   let fullGlobalEnv = Map.union userFuncSignatures initialGlobalEnv
 
-  -- 4. Second Pass: Now, with the complete `fullGlobalEnv` available,
-  --    type-check the *bodies* of all user-defined functions.
-  --    `mapM_` is used here because `checkFunctionDefinition` returns `Either String ()`,
-  --    and we only care that all checks succeed (no `Left` results).
+  -- 2nd pass: type-check all function definitions
   mapM_ (checkFunctionDefinition fullGlobalEnv) funcs
 
-  -- 5. If all checks pass, return the complete global function environment.
+  -- Return the complete global environment
   return fullGlobalEnv
   

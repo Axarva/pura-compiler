@@ -1,7 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Lexer where
 
 import Data.Char
 import Data.List (isPrefixOf)
+import qualified Text.Megaparsec as TM
+
 
 data Token
   = TokLet
@@ -47,6 +50,13 @@ data Token
   --EOF
   | TokEOF
   deriving (Show, Eq, Ord)
+
+instance TM.VisualStream [Token] where
+  showTokens _ ts = show ts  -- or a custom pretty-print
+  tokensLength _ ts = length ts
+
+instance TM.TraversableStream [Token] where
+  reachOffset _ posState = (Nothing, posState)  
 
 tokenize :: String -> [Token]
 tokenize s =

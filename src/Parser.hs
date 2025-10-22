@@ -1,19 +1,21 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE FlexibleInstances #-} -- Keep this for Stream/VisualStream instances
+-- {-# LANGUAGE FlexibleInstances #-}
+-- {-# LANGUAGE TypeFamilies #-}
 
 module Parser where
 
 import qualified Lexer as L
 import AST
 import Types
-import Text.Megaparsec
+import Text.Megaparsec hiding (tokens)
 import Data.Void
 import Control.Monad
 import Data.Maybe ( fromMaybe, isJust, fromJust )
 import qualified Data.Map as Map
+import Debug.Trace (traceShow)
 
--- Parser monad type
+
 type Parser = Parsec Void [L.Token]
 
 -- Helper for chainr1 (right-associative binary operator) for Types
@@ -37,6 +39,13 @@ chainr1'Type p op = do
 parseType :: Parser Type
 parseType = parseArrowType
 
+-- HTML EXTRA TYPES
+parseHtmlType :: Parser Type
+parseHtmlType = do
+  L.TokIdentifier "Html" <- satisfy $ isIdentifier "Html"
+  elementType <- parseBasicType
+  return (THtml elementType)
+
 -- BNF: <arrow_type> ::= <basic_type> ( "->" <arrow_type> )?
 -- Parses function arrow types (right-associative: A -> B -> C is A -> (B -> C))
 parseArrowType :: Parser Type
@@ -50,7 +59,10 @@ parseBasicType =
   <|> (do L.TokIdentifier "String" <- satisfy (isIdentifier "String"); return TString)
   <|> (do L.TokIdentifier "Bool"   <- satisfy (isIdentifier "Bool"); return TBool)
   <|> (do L.TokIdentifier "Unit"   <- satisfy (isIdentifier "Unit"); return TUnit)
-  <|> parseListType                -- Handles `List T` syntax
+  <|> (do L.TokIdentifier "Attribute" <- satisfy (isIdentifier "Attribute"); return TAttribute)
+  <|> (do L.TokIdentifier "Msg" <- satisfy (isIdentifier "Msg"); return TMsg)
+  <|> parseListType
+  <|> parseHtmlType
   <|> (do _ <- single L.TokLParen; t <- parseType; _ <- single L.TokRParen; return t) -- For `(A -> B)`
 
 -- BNF: <list_type> ::= "List" <basic_type>
@@ -233,7 +245,7 @@ parseAtom =
               _ <- single L.TokRParen
               return LitUnit)
   <|> try parseIfElse
-  <|> try parseBlock 
+  <|> try parseBlock
   <|> try parseListLiteral
   <|> try (do v <- parseVariable; notFollowedBy (single L.TokColon); return v)
   <|> parseDoBlock
@@ -324,7 +336,7 @@ parseEffectName = do
 --------------------------------------------------------------------------------
 
 -- A sum type to represent either a type declaration or a function definition found at the top level
-data TopLevelDecl = TypeDecl (String, Type) | FuncDef Function
+data TopLevelDecl = TypeDecl (String, Type) | FuncDef Function deriving Show
 
 -- BNF: <top_level_declaration> ::= <type_declaration> | <function_definition>
 -- The main program parser: collects all top-level declarations and merges them
@@ -336,8 +348,8 @@ parseTopLevelDeclaration =
 -- BNF: <program> ::= <top_level_declaration>* <EOF>
 parseProgram :: Parser [Function]
 parseProgram = do
-  decls <- many parseTopLevelDeclaration -- USE MANY HERE
-  -- The rest of the logic remains the same
+  decls <- many parseTopLevelDeclaration
+  traceShow decls (pure ())
   let typeDeclarations = [ td | TypeDecl td <- decls ]
   let functionDefinitions = [ fd | FuncDef fd <- decls ]
 
