@@ -1,0 +1,2 @@
+main : Unit
+let main = print "hello"

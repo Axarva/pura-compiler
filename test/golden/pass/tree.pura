@@ -1,0 +1,36 @@
+-- tree.pura
+-- Final version with standard space characters.
+
+-- Type Declarations
+makeIndent : Int -> String
+printIndented : Int -> String -> Unit
+drawTree : Int -> Int -> Unit
+main : Unit
+
+-- A pure, recursive function that RETURNS an indentation string.
+let makeIndent = n =>
+  if n <= 0 then
+    ""
+  else
+    "  " ++ (makeIndent (n - 1))
+
+-- An impure function that builds and prints one line.
+let printIndented = indent => str =>
+  print ((makeIndent indent) ++ str) REQUIRES ConsoleWrite
+
+-- The main recursive function to draw a tree of a given 'size'.
+let drawTree = size => indent =>
+  if size > 0 then {
+    printIndented indent "*";
+    drawTree (size - 1) (indent + 1);
+    drawTree (size - 1) (indent + 1);
+  } else {
+    ();
+  }
+
+-- The main entry point of our program.
+let main = {
+  print "--- Generating Recursive Tree ---";
+  drawTree 4 0;
+  print "-------------------------------";
+} REQUIRES ConsoleWrite

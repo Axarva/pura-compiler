@@ -68,3 +68,9 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - pura-compiler
+    - hspec
+    - filepath
+    - megaparsec
+    - text
+    - containers
+    - mtl

@@ -8,7 +8,7 @@ import TypeChecker (checkProgram)
 import Permissions (checkFunction)
 
 import qualified CodeGen as CG
-import System.FilePath (replaceExtension) -- For creating the output file path
+import System.FilePath ((<.>)) -- for paths
 
 main :: IO ()
 main = do
@@ -48,7 +48,7 @@ main = do
 
                   -- 5. Code Generation for MVU
                   putStrLn "--- Generating Code ---"
-                  let outPath = replaceExtension filePath ".js"
+                  let outPath = filePath <.> "js"
                   let generatedCode = CG.generateProgram functions -- Using the function from CodeGen.hs
                   
                   writeFile outPath generatedCode
