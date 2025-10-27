@@ -336,7 +336,7 @@ parseAtom =
 parseBlock :: Parser Expr
 parseBlock = do
   matchTok L.TokLBrace
-  exprs <- many (parseExpr <* matchTok L.TokSemicolon)
+  exprs <- parseExpr `sepEndBy` matchTok L.TokSemicolon
   matchTok L.TokRBrace
   return (Block exprs)
 
