@@ -2,6 +2,7 @@ module CodeGen where
 
 import AST
 import Types
+import Data.List (intercalate)
 
 mapBuiltin :: String -> String
 mapBuiltin name = case name of
@@ -27,7 +28,7 @@ generateExpr expr = case expr of
   LitInt n      -> show n
   LitBool b     -> if b then "true" else "false"
   LitString s   -> show s
-  LitUnit     -> "null" 
+  LitUnit     -> "null"
 
   -- A variable in Pura is a variable in JS.
   Var name -> mapBuiltin name
@@ -56,17 +57,17 @@ generateExpr expr = case expr of
   -- Function application in Pura (f x y) is the same in JS,
   -- assuming functions are curried.
   Apply func arg -> generateExpr func ++ "(" ++ generateExpr arg ++ ")"
-  
+
   -- A block returns the value of its last expression.
   -- An Immediately Invoked Function Expression (IIFE) in JS is a perfect fit.
   Block exprs ->
-    -- case reverse exprs of
-    --   [] -> "(() => {})()" -- An empty block is a no-op
-    --   (lastExpr:rest) ->
-    --     let bodyStmts = map (\e -> generateExpr e ++ ";") (reverse rest)
-    --     in "(() => { " ++ concat bodyStmts ++ "return " ++ generateExpr lastExpr ++ "; })()"
-    let stmts = map (\e -> generateExpr e ++ ";") exprs
-    in "(() => { " ++ concat stmts ++ "})()"
+    case reverse exprs of
+      [] -> "(() => {})()" -- An empty block is a no-op
+      (lastExpr:rest) ->
+        let bodyStmts = map (\e -> generateExpr e ++ ";") (reverse rest)
+        in "(() => { " ++ concat bodyStmts ++ "return " ++ generateExpr lastExpr ++ "; })()"
+    -- let stmts = map (\e -> generateExpr e ++ ";") exprs
+    -- in "(() => { " ++ concat stmts ++ "})()"
 
   OpAsFunction op ->
     let opStr = case op of
@@ -86,6 +87,20 @@ generateExpr expr = case expr of
 
   IfThenElse cond thenExpr elseExpr ->
     "((" ++ generateExpr cond ++ ") ? (" ++ generateExpr thenExpr ++ ") : (" ++ generateExpr elseExpr ++ "))"
+
+  -- Case for lists:
+  LitList elements ->
+    let compiledElements = map generateExpr elements
+    in "[" ++ intercalate ", " compiledElements ++ "]"
+
+  UnOp op e1 ->
+    let opStr = case op of
+          Not -> "!"
+    in "(" ++ opStr ++ " " ++ generateExpr e1 ++ ")"
+
+  DoBlock exprs ->
+    let stmts = map (\e -> generateExpr e ++ ";") exprs
+    in "(() => { " ++ concat stmts ++ "})()"
 
       -- Other cases to add later...
   _ -> "/* unhandled AST node */"

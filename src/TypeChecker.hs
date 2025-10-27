@@ -228,8 +228,10 @@ checkProgram :: [Function] -> Either String GlobalEnv
 checkProgram funcs = do
   -- The type for an element function like `div`, `p`, `h1`, etc.
   -- It takes `List Attribute -> List (Html Msg) -> Html Msg`
+  -- For an MVP version, we will use TString. TMsg will wait until we refactor to get
+  -- Hindley-Milner type inference going on this project. Major refactor incoming lol.
   let elemType = TArr (TList TAttribute)
-                      (TArr (TList (THtml TMsg)) (THtml TMsg))
+                      (TArr (TList (THtml TString)) (THtml TString)) -- Will be THtml TMsg later
 
   -- Built-in HTML element types
   let htmlBuiltInTypes = Map.fromList
@@ -237,8 +239,8 @@ checkProgram funcs = do
         , ("p", elemType)
         , ("button", elemType)
         , ("h1", elemType)
-        , ("text", TArr TString (THtml TMsg))
-        , ("onClick", TArr TMsg TAttribute)
+        , ("text", TArr TString (THtml TString)) -- TMsg here too
+        , ("onClick", TArr TString TAttribute)   -- Here as well
         ]
 
   -- Non-HTML built-in functions (standard library)

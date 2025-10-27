@@ -12,7 +12,7 @@ import Data.Void
 import Control.Monad
 import Data.Maybe ( fromMaybe, isJust, fromJust )
 import qualified Data.Map as Map
-import Debug.Trace (traceShow)
+-- import Debug.Trace (traceShow)
 
 
 type Parser = Parsec Void [L.Token]
@@ -418,7 +418,7 @@ parseTopLevelDeclaration =
 parseProgram :: Parser [Function]
 parseProgram = do
   decls <- many parseTopLevelDeclaration
-  traceShow decls (pure ())
+  -- traceShow decls (pure ())
   let typeDeclarations = [ td | TypeDecl td <- decls ]
   let functionDefinitions = [ fd | FuncDef fd <- decls ]
 

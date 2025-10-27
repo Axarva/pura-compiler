@@ -6,10 +6,8 @@ import Lexer (tokenize)
 import Parser (parseProgram)
 import TypeChecker (checkProgram)
 import Permissions (checkFunction)
-import AST (Function(..))
 
 import qualified CodeGen as CG
-import Data.List (partition)
 import System.FilePath (replaceExtension) -- For creating the output file path
 
 main :: IO ()
@@ -22,7 +20,7 @@ main = do
 
       -- 1. Lexing
       let tokens = tokenize sourceCode
-      print tokens
+      -- print tokens
 
       -- 2. Parsing
       case runParser parseProgram filePath tokens of
