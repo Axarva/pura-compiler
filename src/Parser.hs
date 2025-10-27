@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 -- {-# LANGUAGE FlexibleInstances #-}
 -- {-# LANGUAGE TypeFamilies #-}
@@ -30,6 +29,55 @@ chainr1'Type p op = do
         return (f x y)
       ) <|> return x
 
+matchTok :: L.TokenType -> Parser ()
+matchTok expected = do
+  t <- satisfy (\tok -> L.tokType tok == expected)
+  return ()
+
+-- Helper to get the TokenType from a Token
+getTokType :: L.Token -> L.TokenType
+getTokType = L.tokType
+
+-- Extract an identifier's name
+identifier :: Parser String
+identifier = do
+  t <- satisfy (\tok -> case L.tokType tok of
+                         L.TokIdentifier _ -> True
+                         _ -> False)
+  case L.tokType t of
+    L.TokIdentifier name -> return name
+    _ -> fail "Expected identifier"  -- Should never happen
+
+-- Extract a number
+number :: Parser Int
+number = do
+  t <- satisfy (\tok -> case L.tokType tok of
+                         L.TokNumber _ -> True
+                         _ -> False)
+  case L.tokType t of
+    L.TokNumber n -> return n
+    _ -> fail "Expected number"
+
+-- Extract a string literal
+stringLit :: Parser String
+stringLit = do
+  t <- satisfy (\tok -> case L.tokType tok of
+                         L.TokStringLiteral _ -> True
+                         _ -> False)
+  case L.tokType t of
+    L.TokStringLiteral s -> return s
+    _ -> fail "Expected string literal"
+
+-- Extract a boolean literal
+boolLit :: Parser Bool
+boolLit = do
+  t <- satisfy (\tok -> case L.tokType tok of
+                         L.TokBoolLiteral _ -> True
+                         _ -> False)
+  case L.tokType t of
+    L.TokBoolLiteral b -> return b
+    _ -> fail "Expected boolean literal"
+
 --------------------------------------------------------------------------------
 -- 1. Type Parsing
 --------------------------------------------------------------------------------
@@ -42,34 +90,33 @@ parseType = parseArrowType
 -- HTML EXTRA TYPES
 parseHtmlType :: Parser Type
 parseHtmlType = do
-  L.TokIdentifier "Html" <- satisfy $ isIdentifier "Html"
-  elementType <- parseBasicType
-  return (THtml elementType)
+  _ <- satisfy $ isIdentifier "Html"
+  THtml <$> parseBasicType
 
 -- BNF: <arrow_type> ::= <basic_type> ( "->" <arrow_type> )?
 -- Parses function arrow types (right-associative: A -> B -> C is A -> (B -> C))
 parseArrowType :: Parser Type
-parseArrowType = chainr1'Type parseBasicType (do _ <- single L.TokRightArrow; return TArr)
+parseArrowType = chainr1'Type parseBasicType (do _ <- matchTok L.TokRightArrow; return TArr)
 
 -- BNF: <basic_type> ::= "Int" | "String" | "Bool" | "Unit" | <list_type> | "(" <type> ")"
 -- Parses atomic or parenthesized types
 parseBasicType :: Parser Type
 parseBasicType =
-      (do L.TokIdentifier "Int"    <- satisfy (isIdentifier "Int"); return TInt)
-  <|> (do L.TokIdentifier "String" <- satisfy (isIdentifier "String"); return TString)
-  <|> (do L.TokIdentifier "Bool"   <- satisfy (isIdentifier "Bool"); return TBool)
-  <|> (do L.TokIdentifier "Unit"   <- satisfy (isIdentifier "Unit"); return TUnit)
-  <|> (do L.TokIdentifier "Attribute" <- satisfy (isIdentifier "Attribute"); return TAttribute)
-  <|> (do L.TokIdentifier "Msg" <- satisfy (isIdentifier "Msg"); return TMsg)
+      (do _ <- satisfy (isIdentifier "Int"); return TInt)
+  <|> (do _ <- satisfy (isIdentifier "String"); return TString)
+  <|> (do _ <- satisfy (isIdentifier "Bool"); return TBool)
+  <|> (do _ <- satisfy (isIdentifier "Unit"); return TUnit)
+  <|> (do _ <- satisfy (isIdentifier "Attribute"); return TAttribute)
+  <|> (do _ <- satisfy (isIdentifier "Msg"); return TMsg)
   <|> parseListType
   <|> parseHtmlType
-  <|> (do _ <- single L.TokLParen; t <- parseType; _ <- single L.TokRParen; return t) -- For `(A -> B)`
+  <|> (do matchTok L.TokLParen; t <- parseType; matchTok L.TokRParen; return t)
 
 -- BNF: <list_type> ::= "List" <basic_type>
 -- Parses list types (e.g., `List Int`)
 parseListType :: Parser Type
 parseListType = do
-  L.TokIdentifier "List" <- satisfy $ isIdentifier "List" -- Expects the keyword "List"
+  _ <- satisfy $ isIdentifier "List" -- Expects the keyword "List"
   elementType <- parseBasicType -- The element type can be any basic type (or parenthesized)
   return (TList elementType)
 
@@ -81,69 +128,63 @@ parseListType = do
 -- Parses the 'let <name> =' part of a function definition
 parseLet :: Parser String
 parseLet = do
-  _ <- single L.TokLet
-  L.TokIdentifier name <- satisfy isIdentifier'
-  _ <- single L.TokEquals
+  matchTok L.TokLet
+  name <- identifier
+  matchTok L.TokEquals
   return name
 
 parseIfElse :: Parser Expr
 parseIfElse = do
-  _ <- single L.TokIf
+  matchTok L.TokIf
   cond <- parseExpr
-  _ <- single L.TokThen
+  matchTok L.TokThen
   thenBranch <- parseExpr
-  _ <- single L.TokElse
+  matchTok L.TokElse
   IfThenElse cond thenBranch <$> parseExpr
 
 -- BNF: <func_arrow> ::= "=>"
 -- Parses the '=>' arrow
 parseArrow :: Parser ()
-parseArrow = void (single L.TokArrow)
+parseArrow = void (matchTok L.TokArrow)
 
 -- Helpers to check if a token is an identifier
 isIdentifier :: String -> L.Token -> Bool
-isIdentifier expected (L.TokIdentifier given) = given == expected
-isIdentifier _ _ = False
+isIdentifier expected tok = case L.tokType tok of
+  L.TokIdentifier given -> given == expected
+  _ -> False
 
 isIdentifier' :: L.Token -> Bool
-isIdentifier' (L.TokIdentifier _) = True
-isIdentifier' _ = False
+isIdentifier' tok = case L.tokType tok of
+  L.TokIdentifier _ -> True
+  _ -> False
 
 -- BNF: <string_literal> ::= <string_token>
 -- Parses a string literal
 parseStringLiteral :: Parser Expr
-parseStringLiteral = do
-  L.TokStringLiteral s <- satisfy (\case L.TokStringLiteral _ -> True; _ -> False)
-  return (LitString s)
+parseStringLiteral = LitString <$> stringLit
 
 -- BNF: <int_literal> ::= <number_token>
 -- Parses an integer literal
 parseIntLiteral :: Parser Expr
-parseIntLiteral = do
-  L.TokNumber n <- satisfy (\case L.TokNumber _ -> True; _ -> False)
-  return (LitInt n)
+parseIntLiteral = LitInt <$> number
 
 -- BNF: <bool_literal> ::= "True" | "False"
 -- Parses a boolean literal
 parseBoolLiteral :: Parser Expr
-parseBoolLiteral = do
-  L.TokBoolLiteral bool <- satisfy (\case L.TokBoolLiteral _ -> True; _ -> False)
-  return (LitBool bool)
+parseBoolLiteral = LitBool <$> boolLit
 
 -- BNF: <variable> ::= <identifier>
 -- Parses a variable reference
 parseVariable :: Parser Expr
-parseVariable = do
-  L.TokIdentifier name <- satisfy isIdentifier'
-  return (Var name)
+parseVariable = Var <$> identifier
 
 -- BNF: <list_literal> ::= "[" ( <expr> ("," <expr>)* )? "]"
 -- Parses a list literal (e.g., [1, 2, 3])
 parseListLiteral :: Parser Expr
 parseListLiteral = do
-  _ <- single L.TokLBracket
-  elements <- parseExpr `sepBy` single L.TokComma
-  _ <- single L.TokRBracket
+  _ <- matchTok L.TokLBracket
+  elements <- parseExpr `sepBy` matchTok L.TokComma
+  _ <- matchTok L.TokRBracket
   return (LitList elements)
 
 --------------------------------------------------------------------------------
@@ -174,12 +215,33 @@ parseBinOpToken tokenToOp = do
 
 -- Token to BinOperator mappings (for parseBinOpToken)
 isOrOp, isAndOp, isComparisonOp, isAdditiveOp, isMultiplicativeOp :: L.Token -> Maybe BinOperator
-isOrOp L.TokPipePipe = Just Or; isOrOp _ = Nothing
-isAndOp L.TokAmpAmp = Just And; isAndOp _ = Nothing
-isComparisonOp L.TokEqEq = Just Eq; isComparisonOp L.TokBangEq = Just Neq; isComparisonOp L.TokLt = Just Lt; isComparisonOp L.TokGt = Just Gt; isComparisonOp L.TokLtEq = Just Le; isComparisonOp L.TokGtEq = Just Ge; isComparisonOp _ = Nothing
-isAdditiveOp L.TokPlus = Just Add; isAdditiveOp L.TokMinus = Just Sub; isAdditiveOp _ = Nothing
-isMultiplicativeOp L.TokStar = Just Mul; isMultiplicativeOp L.TokSlash = Just Div; isMultiplicativeOp _ = Nothing
 
+isOrOp tok = case L.tokType tok of
+  L.TokPipePipe -> Just Or
+  _ -> Nothing
+
+isAndOp tok = case L.tokType tok of
+  L.TokAmpAmp -> Just And
+  _ -> Nothing
+
+isComparisonOp tok = case L.tokType tok of
+  L.TokEqEq -> Just Eq
+  L.TokBangEq -> Just Neq
+  L.TokLt -> Just Lt
+  L.TokGt -> Just Gt
+  L.TokLtEq -> Just Le
+  L.TokGtEq -> Just Ge
+  _ -> Nothing
+
+isAdditiveOp tok = case L.tokType tok of
+  L.TokPlus -> Just Add
+  L.TokMinus -> Just Sub
+  _ -> Nothing
+
+isMultiplicativeOp tok = case L.tokType tok of
+  L.TokStar -> Just Mul
+  L.TokSlash -> Just Div
+  _ -> Nothing
 -- Precedence levels, from lowest to highest:
 
 -- BNF: <or_expr> ::= <and_expr> ( "||" <and_expr> )*
@@ -200,7 +262,7 @@ parseAdditiveExpr = chainl1'Expr parseConcatExpr (parseBinOpToken isAdditiveOp)
 
 -- BNF: <concat_expr> ::= <multiplicative_expr> ( "++" <multiplicative_expr> )*
 parseConcatExpr :: Parser Expr
-parseConcatExpr = chainl1'Expr parseMultiplicativeExpr (try (do _ <- single L.TokStrConcat; return Concat))
+parseConcatExpr = chainl1'Expr parseMultiplicativeExpr (try (do _ <- matchTok L.TokStrConcat; return Concat))
 
 -- BNF: <multiplicative_expr> ::= <unary_expr> ( ( "*" | "/" ) <unary_expr> )*
 parseMultiplicativeExpr :: Parser Expr
@@ -209,7 +271,7 @@ parseMultiplicativeExpr = chainl1'Expr parseUnaryExpr (parseBinOpToken isMultipl
 -- BNF: <unary_expr> ::= "!" <unary_expr> | <term>
 parseUnaryExpr :: Parser Expr
 parseUnaryExpr =
-      (do _ <- single L.TokBang -- Expect '!' for 'not'
+      (do _ <- matchTok L.TokBang -- Expect '!' for 'not'
           expr <- parseUnaryExpr -- Recursively parse the operand
           return (UnOp Not expr))
   <|> parseApplication -- Fall through to terms after unary
@@ -227,13 +289,20 @@ parseApplication = do
 
 -- Helper to check if a token is a binary operator
 isBinOpToken :: L.Token -> Maybe BinOperator
-isBinOpToken L.TokPlus = Just Add; isBinOpToken L.TokMinus = Just Sub
-isBinOpToken L.TokStar = Just Mul; isBinOpToken L.TokSlash = Just Div
-isBinOpToken L.TokAmpAmp = Just And; isBinOpToken L.TokPipePipe = Just Or
-isBinOpToken L.TokEqEq = Just Eq; isBinOpToken L.TokBangEq = Just Neq
-isBinOpToken L.TokLt = Just Lt; isBinOpToken L.TokGt = Just Gt
-isBinOpToken L.TokLtEq = Just Le; isBinOpToken L.TokGtEq = Just Ge
-isBinOpToken _ = Nothing
+isBinOpToken tok = case L.tokType tok of
+  L.TokPlus -> Just Add
+  L.TokMinus -> Just Sub
+  L.TokStar -> Just Mul
+  L.TokSlash -> Just Div
+  L.TokAmpAmp -> Just And
+  L.TokPipePipe -> Just Or
+  L.TokEqEq -> Just Eq
+  L.TokBangEq -> Just Neq
+  L.TokLt -> Just Lt
+  L.TokGt -> Just Gt
+  L.TokLtEq -> Just Le
+  L.TokGtEq -> Just Ge
+  _ -> Nothing
 
 parseAtom :: Parser Expr
 parseAtom =
@@ -241,22 +310,22 @@ parseAtom =
   <|> parseBoolLiteral
   <|> parseIntLiteral
   <|> try (do -- <<< ADD THIS BLOCK to parse the Unit literal '()'
-              _ <- single L.TokLParen
-              _ <- single L.TokRParen
+              _ <- matchTok L.TokLParen
+              _ <- matchTok L.TokRParen
               return LitUnit)
   <|> try parseIfElse
   <|> try parseBlock
   <|> try parseListLiteral
-  <|> try (do v <- parseVariable; notFollowedBy (single L.TokColon); return v)
+  <|> try (do v <- parseVariable; notFollowedBy (matchTok L.TokColon); return v)
   <|> parseDoBlock
   <|> (do -- This now handles both regular parenthesized expressions AND (op)
-          _ <- single L.TokLParen
+          _ <- matchTok L.TokLParen
           expr <- try (do -- Operator as Function: (op)
                           op <- satisfy (isJust . isBinOpToken)
                           return $ OpAsFunction (fromJust $ isBinOpToken op)
                       )
               <|> parseExpr -- Fallback to a regular expression
-          _ <- single L.TokRParen
+          _ <- matchTok L.TokRParen
           return expr)
 
 --------------------------------------------------------------------------------
@@ -266,18 +335,18 @@ parseAtom =
 -- BNF: <block> ::= "{" <expr>* "}"
 parseBlock :: Parser Expr
 parseBlock = do
-  _ <- single L.TokLBrace
-  exprs <- many (parseExpr <* single L.TokSemicolon)
-  _ <- single L.TokRBrace
+  matchTok L.TokLBrace
+  exprs <- many (parseExpr <* matchTok L.TokSemicolon)
+  matchTok L.TokRBrace
   return (Block exprs)
 
 -- BNF: <do_block> ::= "do" "{" <expr>* "}"
 parseDoBlock :: Parser Expr
 parseDoBlock = do
-  _ <- single L.TokDo
-  _ <- single L.TokLBrace
+  matchTok L.TokDo
+  matchTok L.TokLBrace
   exprs <- many parseExpr
-  _ <- single L.TokRBrace
+  matchTok L.TokRBrace
   return (DoBlock exprs)
 
 --------------------------------------------------------------------------------
@@ -285,12 +354,12 @@ parseDoBlock = do
 --------------------------------------------------------------------------------
 
 parseParamName :: Parser String
-parseParamName = do L.TokIdentifier name <- satisfy isIdentifier'; return name
+parseParamName = identifier
 
 parseTypeDeclaration :: Parser (String, Type)
 parseTypeDeclaration = do
-  L.TokIdentifier name <- satisfy isIdentifier'
-  _ <- single L.TokColon
+  name <- identifier
+  matchTok L.TokColon
   funcSig <- parseType
   return (name, funcSig)
 
@@ -314,22 +383,22 @@ parseFunctionDefinition = do
 -- BNF: <requires_clause> ::= "REQUIRES" <effect_names>
 parseRequires :: Parser [Effect]
 parseRequires = do
-  _ <- single L.TokRequires
+  matchTok L.TokRequires
   parseEffectNames
 
 -- BNF: <effect_names> ::= <effect> ("," <effect>)*
 parseEffectNames :: Parser [Effect]
-parseEffectNames = parseEffectName `sepBy` single L.TokComma
+parseEffectNames = parseEffectName `sepBy` matchTok L.TokComma
 
 -- BNF: <effect> ::= "ConsoleWrite" | "FileIO" | "Network"
 parseEffectName :: Parser Effect
 parseEffectName = do
-  L.TokIdentifier eff <- satisfy isIdentifier'
+  eff <- identifier  -- Use our helper
   case eff of
     "ConsoleWrite" -> return ConsoleWrite
     "FileIO"       -> return FileIO
     "Network"      -> return Network
-    _             -> fail ("Unknown effect: " ++ eff)
+    _              -> fail ("Unknown effect: " ++ eff)
 
 --------------------------------------------------------------------------------
 -- 7. Program Parsing (Alternative robust strategy for top-level declarations)
@@ -369,7 +438,7 @@ parseProgram = do
   unless (null duplicateDefs) $
     fail $ "Error: Duplicate function definitions for: " -- ++ show duplicateDefs
 
-  _ <- single L.TokEOF -- This line remains at the end
+  matchTok L.TokEOF -- This line remains at the end
   eof -- Make sure there's nothing after the EOF token
   return functionsWithTypes
 

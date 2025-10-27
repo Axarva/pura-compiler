@@ -1,12 +1,20 @@
 {-# LANGUAGE FlexibleInstances #-}
+
 module Lexer where
 
 import Data.Char
 import Data.List (isPrefixOf)
 import qualified Text.Megaparsec as TM
+import qualified Data.List.NonEmpty as NE
 
 
-data Token
+data Token = Token
+  { tokType :: TokenType
+  , tokLine :: Int
+  , tokCol  :: Int
+  } deriving (Show, Eq, Ord)
+
+data TokenType
   = TokLet
   -- Keywords and symbols
   | TokDo
@@ -52,75 +60,114 @@ data Token
   deriving (Show, Eq, Ord)
 
 instance TM.VisualStream [Token] where
-  showTokens _ ts = show ts  -- or a custom pretty-print
-  tokensLength _ ts = length ts
+  showTokens _ ts = unwords $ map showToken (NE.toList ts)
+    where
+      showToken (Token tt line col) =
+        show tt ++ "@" ++ show line ++ ":" ++ show col
+
+  tokensLength _ = NE.length
 
 instance TM.TraversableStream [Token] where
-  reachOffset _ posState = (Nothing, posState)  
+  reachOffset _ posState = (Nothing, posState)
 
 tokenize :: String -> [Token]
-tokenize s =
-  let stripped = strip s
-  in if null stripped
-       then [TokEOF]
-       else let (tok, rest) = nextToken stripped
-            in tok : tokenize rest
-
-strip :: String -> String
-strip s =
-  let afterSpace = dropWhile isSpace s
-  in if "--" `isPrefixOf` afterSpace
-       -- If we find a comment, drop the whole line and try stripping again
-       then strip (dropWhile (/= '\n') afterSpace)
-       -- Otherwise, the string is clean and ready for the next token
-       else afterSpace
+tokenize source = tokenizeWithPos source 1 1
+  where
+    -- tokenizeWithPos processes the source while tracking line and column
+    tokenizeWithPos :: String -> Int -> Int -> [Token]
+    tokenizeWithPos s line col =
+      let stripped = stripWhitespace s line col
+      in case stripped of
+          ([], _, _) -> [Token TokEOF line col]
+          (rest, newLine, newCol) ->
+            let (tok, remaining, finalLine, finalCol) = nextToken rest newLine newCol
+            in tok : tokenizeWithPos remaining finalLine finalCol
 
 
-nextToken :: String -> (Token, String)
-nextToken ('(' : rest) = (TokLParen, rest)
-nextToken (')' : rest) = (TokRParen, rest)
-nextToken ('{' : rest) = (TokLBrace, rest)
-nextToken ('}' : rest) = (TokRBrace, rest)
-nextToken ('=' : '>' : rest) = (TokArrow, rest)
-nextToken ('-' : '>' : rest) = (TokRightArrow, rest)
-nextToken ('-' : rest) = (TokMinus, rest)
-nextToken ('*' : rest) = (TokStar, rest)
-nextToken ('/' : rest) = (TokSlash, rest)
-nextToken ('&' : '&' : rest) = (TokAmpAmp, rest)
-nextToken ('|' : '|' : rest) = (TokPipePipe, rest)
-nextToken ('!' : '=' : rest) = (TokBangEq, rest) -- For !=
-nextToken ('!' : rest) = (TokBang, rest)        -- For 'not' (unary !)
-nextToken ('=' : '=' : rest) = (TokEqEq, rest)  -- For ==
-nextToken ('<' : '=' : rest) = (TokLtEq, rest)
-nextToken ('<' : rest) = (TokLt, rest)
-nextToken ('>' : '=' : rest) = (TokGtEq, rest)
-nextToken ('>' : rest) = (TokGt, rest)
-nextToken ('=' : rest) = (TokEquals, rest)
-nextToken ('+' : '+' : rest) = (TokStrConcat, rest)  -- Match ++ first
-nextToken ('+' : rest) = (TokPlus, rest)            -- Then +
-nextToken (':' : rest) = (TokColon, rest)
-nextToken (';' : rest) = (TokSemicolon, rest)
-nextToken ('[' : rest) = (TokLBracket, rest)
-nextToken (']' : rest) = (TokRBracket, rest)
-nextToken (',' : rest) = (TokComma, rest)
-nextToken s@(c:_)
-  | isNumber c =
-    let (ident, rest') = span isNumber s
-    in case ident of x -> (TokNumber (read x :: Int), rest')
+stripWhitespace :: String -> Int -> Int -> (String, Int, Int)
+stripWhitespace [] line col = ([], line, col)
+stripWhitespace s@(c:cs) line col
+  | isSpace c =
+      if c == '\n'
+        then stripWhitespace cs (line + 1) 1  -- New line: increment line, reset column
+        else stripWhitespace cs line (col + 1) -- Other space: just increment column
+  | "--" `isPrefixOf` s =
+      -- Comment: skip until newline
+      let (_, afterComment) = span (/= '\n') s
+      in stripWhitespace afterComment line col
+  | otherwise = (s, line, col)  -- No more whitespace, return position
+
+
+-- Extract one token and return (Token, remaining string, new line, new column)
+nextToken :: String -> Int -> Int -> (Token, String, Int, Int)
+nextToken [] line col = (Token TokEOF line col, [], line, col)
+
+-- Single character tokens
+nextToken ('(' : rest) line col = (Token TokLParen line col, rest, line, col + 1)
+nextToken (')' : rest) line col = (Token TokRParen line col, rest, line, col + 1)
+nextToken ('{' : rest) line col = (Token TokLBrace line col, rest, line, col + 1)
+nextToken ('}' : rest) line col = (Token TokRBrace line col, rest, line, col + 1)
+nextToken ('[' : rest) line col = (Token TokLBracket line col, rest, line, col + 1)
+nextToken (']' : rest) line col = (Token TokRBracket line col, rest, line, col + 1)
+nextToken (',' : rest) line col = (Token TokComma line col, rest, line, col + 1)
+nextToken (':' : rest) line col = (Token TokColon line col, rest, line, col + 1)
+nextToken (';' : rest) line col = (Token TokSemicolon line col, rest, line, col + 1)
+nextToken ('*' : rest) line col = (Token TokStar line col, rest, line, col + 1)
+nextToken ('/' : rest) line col = (Token TokSlash line col, rest, line, col + 1)
+
+-- Two character tokens (must check these before single-char versions)
+nextToken ('=' : '>' : rest) line col = (Token TokArrow line col, rest, line, col + 2)
+nextToken ('-' : '>' : rest) line col = (Token TokRightArrow line col, rest, line, col + 2)
+nextToken ('&' : '&' : rest) line col = (Token TokAmpAmp line col, rest, line, col + 2)
+nextToken ('|' : '|' : rest) line col = (Token TokPipePipe line col, rest, line, col + 2)
+nextToken ('!' : '=' : rest) line col = (Token TokBangEq line col, rest, line, col + 2)
+nextToken ('=' : '=' : rest) line col = (Token TokEqEq line col, rest, line, col + 2)
+nextToken ('<' : '=' : rest) line col = (Token TokLtEq line col, rest, line, col + 2)
+nextToken ('>' : '=' : rest) line col = (Token TokGtEq line col, rest, line, col + 2)
+nextToken ('+' : '+' : rest) line col = (Token TokStrConcat line col, rest, line, col + 2)
+
+-- Single char tokens that need to come AFTER two-char checks
+nextToken ('-' : rest) line col = (Token TokMinus line col, rest, line, col + 1)
+nextToken ('!' : rest) line col = (Token TokBang line col, rest, line, col + 1)
+nextToken ('=' : rest) line col = (Token TokEquals line col, rest, line, col + 1)
+nextToken ('<' : rest) line col = (Token TokLt line col, rest, line, col + 1)
+nextToken ('>' : rest) line col = (Token TokGt line col, rest, line, col + 1)
+nextToken ('+' : rest) line col = (Token TokPlus line col, rest, line, col + 1)
+
+-- Numbers: consume all digits
+nextToken s@(c:_) line col
+  | isDigit c =
+      let (digits, rest) = span isDigit s
+          num = read digits :: Int
+          len = length digits
+      in (Token (TokNumber num) line col, rest, line, col + len)
+
+-- Identifiers and keywords
+nextToken s@(c:_) line col
   | isAlpha c =
-      let (ident, rest') = span isAlphaNum s
-      in case ident of
-          "let" -> (TokLet, rest')
-          "if"  -> (TokIf, rest')
-          "then" -> (TokThen, rest')
-          "else" -> (TokElse, rest')
-          "do"  -> (TokDo, rest')
-          "REQUIRES" -> (TokRequires, rest')
-          "True" -> (TokBoolLiteral True, rest')
-          "False" -> (TokBoolLiteral False, rest')
-          other -> (TokIdentifier other, rest')
-  | c == '"' =
-      let (strContent, rest'') = span (/= '"') (tail s)
-      in (TokStringLiteral strContent, drop 1 rest'')  -- drop closing "
-  | otherwise = error $ "Unexpected character: " ++ [c]
-nextToken "" = (TokEOF, "")
+      let (ident, rest) = span isAlphaNum s
+          len = length ident
+          tokType = case ident of
+            "let"      -> TokLet
+            "if"       -> TokIf
+            "then"     -> TokThen
+            "else"     -> TokElse
+            "do"       -> TokDo
+            "REQUIRES" -> TokRequires
+            "True"     -> TokBoolLiteral True
+            "False"    -> TokBoolLiteral False
+            _          -> TokIdentifier ident
+      in (Token tokType line col, rest, line, col + len)
+
+-- String literals
+nextToken ('"' : rest) line col =
+    let (strContent, afterStr) = span (/= '"') rest
+        len = length strContent + 2  -- +2 for the quotes
+    in case afterStr of
+        ('"' : remaining) ->
+          (Token (TokStringLiteral strContent) line col, remaining, line, col + len)
+        _ -> error $ "Unterminated string at line " ++ show line ++ ", column " ++ show col
+
+-- Unexpected character
+nextToken (c:_) line col =
+  error $ "Unexpected character '" ++ [c] ++ "' at line " ++ show line ++ ", column " ++ show col
