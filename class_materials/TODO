@@ -28,3 +28,6 @@
 - Implement Msg primitives for Html types
 - Rethink semicolon placements in blocks and remove them as terminators
 - Strengthen lexer to record position
+
+2025/10/29
+- Continue studying Hindley-Milner and work on implementation.
