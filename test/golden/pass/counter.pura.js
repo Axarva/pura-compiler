@@ -8,7 +8,7 @@ const PuraRuntime = {
 
 const initialModel = 0;
 const update = function(msg) { return function(model) { return (() => { return (((msg === "0")) ? ((() => { return (model + 1); })()) : ((() => { return (((msg === "1")) ? ((() => { return (model - 1); })()) : (model)); })())); })(); }; };
-const view = function(model) { return (() => { return PuraRuntime.elem('div')([PuraRuntime.on('click')("2")])([PuraRuntime.elem('h1')([PuraRuntime.on('click')("2")])([PuraRuntime.text("Pura Counter")]), PuraRuntime.elem('p')([PuraRuntime.on('click')("2")])([PuraRuntime.text(("Count: " + String(model)))]), PuraRuntime.elem('button')([PuraRuntime.on('click')("0")])([PuraRuntime.text("+")]), PuraRuntime.elem('button')([PuraRuntime.on('click')("1")])([PuraRuntime.text("-")])]); })(); };
+const view = function(model) { return (() => { return PuraRuntime.elem('div')([])([PuraRuntime.elem('h1')([])([PuraRuntime.text("Pura Counter")]), PuraRuntime.elem('p')([])([PuraRuntime.text(("Count: " + String(model)))]), PuraRuntime.elem('button')([PuraRuntime.on('click')("0")])([PuraRuntime.text("+")]), PuraRuntime.elem('button')([PuraRuntime.on('click')("1")])([PuraRuntime.text("-")])]); })(); };
 
 
 // --- MVU Main Loop ---

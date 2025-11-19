@@ -14,11 +14,11 @@ let update = msg => model => {
    }
 }
 
-view : Int -> Html String
+view : Int -> Html Msg
 let view = model => {
-  div [onClick "2"] [
-    h1 [onClick "2"] [text "Pura Counter"],
-    p [onClick "2"] [text ("Count: " ++ (toString model))],
+  div [] [
+    h1 [] [text "Pura Counter"],
+    p [] [text ("Count: " ++ (toString model))],
     button [onClick "0"] [text "+"],
     button [onClick "1"] [text "-"]
   ]

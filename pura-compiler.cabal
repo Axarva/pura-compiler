@@ -27,6 +27,7 @@ library
   exposed-modules:
       AST
       CodeGen
+      Inference
       Lexer
       Parser
       Permissions

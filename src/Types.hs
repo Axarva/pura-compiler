@@ -1,5 +1,8 @@
 module Types where
 
+import qualified Data.Map as Map
+import Data.List (nub)
+
 -- Represents types in your language
 data Type
   = TInt         -- Integer type
@@ -12,6 +15,20 @@ data Type
   | TAttribute   -- ADDED 2025/10/15: Represents an HTML attribute, like `class="btn"`
   | THtml Type   -- ADDED 2025/10/15: Represents an HTML node, parameterized by the message type (e.g., Html Msg)
   | TMsg
-  -- | TError String 
-  deriving (Show, Eq)
+  | TVar String  -- ADDED 2025/11/19: For HM type inference
+  deriving (Show, Eq, Ord)
   
+-- Type Scheme
+-- Represents a type with quantified variables.
+-- e.g., "forall a. a -> a" is Scheme ["a"] (TArr (TVar "a") (TVar "a"))
+data Scheme = Forall [String] Type
+  deriving (Show, Eq)
+
+-- A substitution is a mapping from variable names to types
+type Subst = Map.Map String Type
+
+-- Global environment for function names and their schemes
+type GlobalEnv = Map.Map String Scheme
+
+-- Local environment for function parameters and local bindings
+type TypeEnv = Map.Map String Type
