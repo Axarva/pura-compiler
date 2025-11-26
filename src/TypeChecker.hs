@@ -7,24 +7,25 @@ import Types
 import Inference 
 import qualified Data.Map as Map
 import Control.Monad
+import Control.Monad.Error.Class (liftEither, MonadError (throwError))
 
 -- | Helper to infer a single function definition (let-binding)
-inferFunction :: GlobalEnv -> Function -> Either String (Subst, Scheme)
+inferFunction :: GlobalEnv -> Function -> Infer (Subst, Scheme)
 inferFunction globalEnv Function{funcName, funcTypeSignature, funcArgs, funcBody} = do
     -- 1. Setup local environment (Monotype variables for arguments)
-    (expectedArgTypes, expectedReturnType) <- unpackFunctionType funcTypeSignature (length funcArgs) funcName
+    (expectedArgTypes, expectedReturnType) <- liftEither $ unpackFunctionType funcTypeSignature (length funcArgs) funcName
 
     -- Create local Monotype Environment (TVar for each argument)
     let env = Map.fromList (zip funcArgs expectedArgTypes)
     
     -- 2. Infer the function body
-    (s_body, t_body) <- runInfer $ inferExpr globalEnv env funcBody
+    (s_body, t_body) <- inferExpr globalEnv env funcBody
     
     -- 3. The type of the function value itself (t_func) is the fully curried type
     let t_func = foldr TArr (apply s_body t_body) expectedArgTypes
 
     -- 4. Unify the inferred function type with the declared function type
-    s_final <- unify t_func funcTypeSignature
+    s_final <- liftEither $ unify t_func funcTypeSignature
     
     -- 5. Generalize the resulting Monotype into a Scheme (Rule 4)
     let final_type = apply s_final funcTypeSignature
@@ -33,7 +34,7 @@ inferFunction globalEnv Function{funcName, funcTypeSignature, funcArgs, funcBody
     -- Final Check (ensuring the declared return type matches the body's actual type)
     if apply s_final expectedReturnType == apply s_final t_body
       then return (s_final, scheme)
-      else Left $ "Type error in function '" ++ funcName ++ "': Declared return type is " ++ show (apply s_final expectedReturnType) ++ " but inferred body type is " ++ show (apply s_final t_body)
+      else throwError $ "Type error in function '" ++ funcName ++ "': Declared return type is " ++ show (apply s_final expectedReturnType) ++ " but inferred body type is " ++ show (apply s_final t_body)
 
 
 -- Helper to unpack a curried function type
@@ -76,7 +77,7 @@ checkProgram funcs = do
 
   -- 2nd pass: infer and unify all function definitions
   finalSchemes <- forM funcs $ \f -> do
-    (s, scheme) <- inferFunction fullGlobalEnv f
+    (s, scheme) <- runInfer $ inferFunction fullGlobalEnv f
     return (funcName f, scheme)
 
   let finalGlobalEnv = Map.fromList finalSchemes
