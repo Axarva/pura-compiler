@@ -1,7 +1,6 @@
 module CodeGen where
 
 import AST
-import Types
 import Data.List (intercalate)
 
 mapBuiltin :: String -> String
