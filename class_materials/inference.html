@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+	<meta charset="utf-8">
+	<title>Pura Compiler: HM Type Inference</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/serif.min.css" id="theme">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css">
+
+	<style>
+		:root {
+			--r-main-font: 'Noto Sans JP', sans-serif;
+			--r-heading-font: 'Noto Serif JP', serif;
+			--r-code-font: 'Fira Code', monospace;
+			--r-background-color: #fdfdfd;
+			--accent-color: #005fcc;
+			--error-color: #d73a49;
+		}
+		.reveal {
+			background-color: var(--r-background-color);
+			background-image: linear-gradient(rgba(0, 0, 0, 0.02) .1em, transparent .1em), linear-gradient(90deg, rgba(0, 0, 0, 0.02) .1em, transparent .1em);
+			background-size: 2em 2em;
+			font-family: var(--r-main-font);
+			color: #333;
+			font-size: 30px; 
+		}
+		.two-column { display: flex; gap: 40px; align-items: flex-start; justify-content: center;}
+		.two-column > div { flex: 1; }
+		.code-block { background-color: #fff; border: 1px solid #ddd; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+		.highlight { color: var(--accent-color); font-weight: bold; }
+		.concept-box { padding: 20px; border: 2px solid #eee; border-radius: 8px; margin-bottom: 20px; background: white; }
+		.math-term { font-family: var(--r-code-font); background: #eee; padding: 2px 5px; border-radius: 4px; }
+		
+		/* Diagrams for traces */
+		.trace-step { font-size: 0.8em; border-left: 3px solid var(--accent-color); padding-left: 15px; margin-bottom: 15px; text-align: left;}
+
+		/* Increase code font size for readability */
+		.reveal code {
+			font-size: 1.2em !important; /* Bump up from default */
+			line-height: 1.4 !important;
+		}
+
+		/* Fix for "LaTeX" rendering using standard HTML */
+		.math-rule {
+			font-family: 'Times New Roman', serif;
+			font-style: italic;
+			font-size: 1.1em;
+			background: #f9f9f9;
+			padding: 15px;
+			border-radius: 8px;
+			margin-bottom: 20px;
+			text-align: center;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+		}
+		.math-symbol {
+			font-style: normal;
+			font-weight: bold;
+			color: #444;
+		}
+		.pyramid-container {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 20px;
+			margin-top: 20px;
+		}
+    
+    	/* The bottom row wrapper */
+		.bottom-row {
+			display: flex;
+			gap: 40px;
+			justify-content: center;
+			width: 100%;
+		}
+
+		/* Common style for boxes */
+		.concept-box {
+			flex: 1;
+			min-width: 300px; /* Ensures they don't get too squished */
+			max-width: 45%;   /* Prevents them from being too wide */
+		}
+	</style>
+</head>
+
+<body>
+	<div class="reveal">
+		<div class="slides">
+			
+			<section>
+				<h1>Hindley-Milner Inference</h1>
+				<h3>Making the Pura Compiler Smart</h3>
+				<p style="font-size: 0.7em; margin-top: 40px;">ティムシナ　アサルヴァ | Pura Compiler Project</p>
+			</section>
+
+			<section>
+				<h2>The Goal: <span class="highlight">Deduction</span></h2>
+				<p>We want the compiler to determine types automatically without forcing the user to annotate everything.</p>
+				<div class="two-column" style="margin-top: 40px;">
+					<div class="code-block fragment">
+						<pre><code class="language-haskell">-- User writes this:
+let map f list = ...</code></pre>
+						<p style="font-size: 0.6em">Compact & Clean</p>
+					</div>
+					<div style="align-items:center; font-size:2em;"> &rarr;</div>
+					<div class="code-block fragment">
+						<pre><code class="language-haskell">-- Compiler sees this:
+forall a b. (a -> b) 
+         -> List a 
+         -> List b</code></pre>
+						<p style="font-size: 0.6em">Safe & Polymorphic</p>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>The HM Trinity</h2>
+				<p>The entire algorithm revolves around three operations performed recursively.</p>
+				<div class="pyramid-container">
+						<div class="concept-box fragment">
+							<h4>1. Instantiate</h4>
+							<p style="font-size:0.7em">"Unpacking"</p>
+							<p style="font-size:0.6em">Replace generic <code> forall a </code>  with fresh variables <code>(t_0, t_1)</code>.</p>
+						</div>
+						<div class="bottom-row">
+							<div class="concept-box fragment">
+								<h4>2. Unify</h4>
+								<p style="font-size:0.7em">"Solving"</p>
+								<p style="font-size:0.6em">Find a substitution that makes two types identical.</p>
+							</div>
+							<div class="concept-box fragment">
+								<h4>3. Generalize</h4>
+								<p style="font-size:0.7em">"Packing"</p>
+								<p style="font-size:0.6em">Capture solved variables back into a <code>forall Scheme</code>.</p>
+							</div>
+						</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>Core Data Structures</h2>
+				<table style="font-size: 0.7em; width: 100%;">
+					<thead>
+						<tr style="background: #eee;">
+							<th>Type</th>
+							<th>Haskell Rep</th>
+							<th>Role</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><b>Type</b></td>
+							<td><code class="language-haskell">TInt | TArr | TVar String</code></td>
+							<td>The puzzle pieces. <br> <code class="language-haskell">TVar "t1"</code> is an unknown.</td>
+						</tr>
+						<tr>
+							<td><b>Scheme</b></td>
+							<td><code class="language-haskell">Forall [String] Type</code></td>
+							<td>The blueprint. <br> Allows polymorphism.</td>
+						</tr>
+						<tr>
+							<td><b>Subst</b></td>
+							<td><code class="language-haskell">Map String Type</code></td>
+							<td>The solution key. <br> e.g. <code>{"t1": TInt}</code></td>
+						</tr>
+					</tbody>
+				</table>
+			</section>
+
+			<section>
+				<h3>Rule: Function Application (App)</h3>
+				<p style="font-size: 0.7em;">Mapping the formal deduction rule to Haskell.</p>
+				
+				<div class="two-column">
+					<div>
+						<h4>The Formal Rule</h4>
+						<div class="math-rule">
+							&Gamma; &#8866; e<sub>1</sub> : &tau;<sub>1</sub> &rarr; &tau;<sub>2</sub>
+							<br>
+							&Gamma; &#8866; e<sub>2</sub> : &tau;<sub>1</sub>
+							<hr style="border-top: 1px solid black; margin: 10px 0;">
+							&Gamma; &#8866; e<sub>1</sub> e<sub>2</sub> : &tau;<sub>2</sub>
+						</div>
+						<p style="font-size: 0.6em;">
+							<b>Logic:</b> If <i>e1</i> is a function from <i>t1</i> to <i>t2</i>, and <i>e2</i> is a <i>t1</i>, then applying them yields a <i>t2</i>.
+						</p>
+					</div>
+					<div>
+						<h4>Inference.hs</h4>
+						<pre><code class="language-haskell" data-trim data-line-numbers="4,8">
+			-- inferExpr ... (Apply e1 e2) ->
+			-- 1. Infer function (e1)
+			(s1, t1) <- inferExpr env e1
+			-- 2. Infer argument (e2)
+			(s2, t2) <- inferExpr env e2
+			-- 3. Unify t1 ~ (t2 -> tv)
+			unify (apply s2 t1) (TArr t2 tv)
+						</code></pre>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h3>Rule: Variable Lookup (Var)</h3>
+				
+				<div class="two-column">
+					<div>
+						<h4>The Formal Rule</h4>
+						<div class="math-rule">
+							x : &sigma; &isin; &Gamma;
+							<hr style="border-top: 1px solid black; margin: 10px 0;">
+							&Gamma; &#8866; x : &sigma;
+						</div>
+						<p style="font-size: 0.6em;">
+							<b>Logic:</b> If <i>x</i> is in our environment with type scheme <i>&sigma;</i>, we instantiate it.
+						</p>
+					</div>
+					<div>
+						<h4>Inference.hs</h4>
+						<pre><code class="language-haskell" data-trim>
+			-- inferExpr ... (Var name) ->
+			case Map.lookup name env of
+			-- Found in local env
+			Just t -> return (Map.empty, t)
+			-- Found in global env (Scheme)
+			Nothing -> case Map.lookup name global of
+				Just scheme -> do
+				t <- instantiate scheme
+				return (Map.empty, t)
+						</code></pre>
+					</div>
+				</div>
+			</section>
+			<section>
+				<h3>Implemented Rules Summary</h3>
+				<p style="font-size: 0.7em;">How Pura adapts the standard HM rules.</p>
+
+				<div style="font-size: 0.7em; text-align: left;">
+					<table style="width: 100%; border-collapse: collapse;">
+						<tr style="border-bottom: 1px solid #ccc;">
+							<th style="padding: 10px;">Formal Rule</th>
+							<th style="padding: 10px;">Status in Pura</th>
+							<th style="padding: 10px;">Implementation</th>
+						</tr>
+						<tr>
+							<td style="padding: 10px;"><b>[VAR]</b> Variable</td>
+							<td style="color: green; padding: 10px;">&#10004; Full Support</td>
+							<td style="padding: 10px;"><code>Inference.hs</code> (Var)</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px;"><b>[APP]</b> Application</td>
+							<td style="color: green; padding: 10px;">&#10004; Full Support</td>
+							<td style="padding: 10px;"><code>Inference.hs</code> (Apply)</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px;"><b>[ABS]</b> Abstraction</td>
+							<td style="color: orange; padding: 10px;">~ Top-Level Only</td>
+							<td style="padding: 10px;"><code>TypeChecker.hs</code> (inferFunction)</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px;"><b>[LET]</b> Let-Binding</td>
+							<td style="color: orange; padding: 10px;">~ Top-Level Only</td>
+							<td style="padding: 10px;"><code>TypeChecker.hs</code> (Global Declarations)</td>
+						</tr>
+					</table>
+					<div style="margin-top: 20px; font-style: italic; color: #555;">
+						* Note: Pura currently separates Top-Level Definitions from Expressions, simplifying the core inference loop.
+					</div>
+				</div>
+			</section>
+			<section>
+				<h2>Unification: The Engine</h2>
+				<p style="font-size: 0.7em;"><code>unify :: Type -> Type -> Either String Subst</code></p>
+				<p>This function attempts to solve the equation: <span class="math-term">t1 ~ t2</span></p>
+				
+				<div class="two-column">
+					<div class="fragment">
+						<h4>Success Case</h4>
+						<pre><code class="language-haskell">unify (TVar "a") TInt</code></pre>
+						<p>&darr;</p>
+						<pre><code class="language-haskell">Right [("a", TInt)]</code></pre>
+					</div>
+					<div class="fragment">
+						<h4 style="color:var(--error-color)">The Occurs Check</h4>
+						<pre><code class="language-haskell">unify (TVar "a") (TList (TVar "a"))</code></pre>
+						<p>&darr;</p>
+						<p style="color:var(--error-color); font-size: 0.6em;"><b>Error: Infinite Type</b><br>a = [a] = [[a]]...</p>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>The Inference Monad</h2>
+				<p>We need to track state (fresh variables) and handle errors immediately.</p>
+				<pre><code class="language-haskell" data-trim>
+type Infer a = 
+    ExceptT String                  -- Stops on Type Mismatch
+    (StateT InferState Identity) a  -- Tracks fresh "t0", "t1"
+				</code></pre>
+				<div class="fragment trace-step" style="margin-top: 20px;">
+					<b>Why?</b> <br>
+					If <code>unify</code> fails deep in a recursion, <code>ExceptT</code> lets us abort the entire process instantly.
+				</div>
+			</section>
+
+			<section>
+				<h2>Rule: Function Application</h2>
+				<p style="font-size: 0.7em; margin-bottom: 30px;">How we infer "f x"</p>
+				
+				<div class="two-column" style="align-items: center;">
+					
+					<div style="font-size: 0.7em; text-align: left;">
+						<div class="fragment trace-step">
+							1. <b>Setup:</b> <br>
+							Create result placeholder: <br>
+							<code class="language-haskell">tv</code> (e.g. "t9")
+						</div>
+						<div class="fragment trace-step">
+							2. <b>Infer Function (f):</b> <br>
+							Found type: <br>
+							<code>t1</code> (e.g. <code class="language-haskell">Int -> String</code>)
+						</div>
+						<div class="fragment trace-step">
+							3. <b>Infer Argument (x):</b> <br>
+							Found type: <code class="language-haskell">t2</code> (e.g. <code>Int</code>)
+						</div>
+					</div>
+
+					<div style="font-size: 2em; text-align: center; color: #ccc; margin-bottom: 10px;"> &rarr;</div>
+					<div style="font-size: 0.7em; text-align: center;">
+						<div class="fragment trace-step" style="background: #f0f8ff; border-left: 5px solid var(--accent-color); padding: 15px;">
+							4. <b>The Constraint (Unify):</b> <br>
+							<code class="language-haskell">unify t1 (t2 -> tv)</code>
+							<hr style="border-top: 1px dashed #bbb; margin: 10px 0;">
+							<small>Do they match?</small>
+							<br>
+							<small><code>(Int -> String == Int -> t9)?</code></small>
+						</div>
+						
+						<div class="fragment trace-step" style="border-left-color: green; margin-top: 20px;">
+							5. <b>Result:</b>
+							<b>Success.</b> 
+							<br>
+							<code>tv</code> solves to <code>String</code>.
+						</div>
+					</div>
+
+				</div>
+			</section>
+
+			<section>
+				<h2>The Two-Pass Strategy</h2>
+				<p style="font-size: 0.7em;">Solving the problem of mutual recursion and forward references.</p>
+
+				<div class="two-column">
+					<div class="fragment">
+						<h4>Pass 1: Gathering</h4>
+						<ul>
+							<li style="font-size: 0.6em">Look at all type signatures.</li>
+							<li style="font-size: 0.6em">Load them into <code>GlobalEnv</code> as Schemes.</li>
+							<li style="font-size: 0.6em">Trust the user's contract (for now).</li>
+						</ul>
+					</div>
+					<div class="fragment">
+						<h4>Pass 2: Verification</h4>
+						<ul>
+							<li style="font-size: 0.6em">Enter every function body.</li>
+							<li style="font-size: 0.6em">Infer the body using the Env from Pass 1.</li>
+							<li style="font-size: 0.6em">Unify Body Type ~ Declared Type.</li>
+						</ul>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>Why Two Passes? (Error Locality)</h2>
+				<p style="font-size: 0.6em;">Scenario: Function <code>g</code> is written incorrectly, but <code>f</code> calls it.</p>
+				
+				<div class="code-block" style="font-size: 0.5em;">
+<pre><code class="language-haskell">g : Int -> Int      -- Declared (Contract)
+let g x = "String"  -- Body (Implementation - ERROR)
+
+f : Int -> Int
+let f x = g x       -- Usage</code></pre>
+				</div>
+
+				<div class="fragment trace-step" style="margin-top:20px;">
+					<b>Without 2-Pass:</b> Inference of <code>f</code> might fail because <code>g</code> is weird.
+				</div>
+				<div class="fragment trace-step" style="border-left-color: green;">
+					<b>With 2-Pass:</b> 
+					1. <code>f</code> compiles fine (it uses <code>g</code>'s contract correctly).<br>
+					2. <code>g</code> fails (its body breaks its own contract).<br>
+					<b>The error is reported exactly where the bug is.</b>
+				</div>
+			</section>
+
+			<section>
+				<h2>Future Work & The Road Ahead</h2>
+				<p style="font-size: 0.7em; margin-bottom: 30px;">Refining the compiler and building the runtime.</p>
+
+				<div class="two-column">
+					<div class="fragment">
+						<h4 style="color: var(--accent-color);">1. Language Enhancements</h4>
+						<ul style="font-size: 0.6em;">
+							<li><b>Let-Polymorphism:</b> Support local generic variables inside expressions.</li>
+							<li><b>Anonymous Functions:</b> Implement true lambdas (<code>\x -> ...</code>) for cleaner code.</li>
+							<li><b>Effect Inference:</b> Move beyond explicit <code>REQUIRES</code> to automatic effect detection.</li>
+							<li><b>Better Error Messages:</b> "Expected String but got Int" instead of raw unification errors.</li>
+						</ul>
+					</div>
+					<div class="fragment">
+						<h4 style="color: var(--accent-color);">2. Architecture (MVU)</h4>
+						<ul style="font-size: 0.6em;">
+							<li><b>Runtime Logic:</b> Implement input handling and list management in the JavaScript runtime.</li>
+							<li><b>Phase 1 (The Demo):</b> Build a fully functional <b>Todo List</b> app to validate the architecture.</li>
+							<li><b>Phase 2 (Stretch Goal):</b> If time permits, expand the runtime to build a self-hosted <b>Presentation Tool</b>.</li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="fragment" style="margin-top: 40px; padding: 15px; background: #eef; border-radius: 8px; font-size: 0.8em;">
+					<b>Next Step:</b> Integrating the new Inference Engine with the runtime to build the Todo App.
+				</div>
+			</section>
+
+			<section>
+				<h1>Thank You</h1>
+				<p>Questions?</p>
+			</section>
+
+		</div>
+	</div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/highlight/highlight.min.js"></script>
+	<script>
+		Reveal.initialize({
+			hash: true,
+			plugins: [ RevealHighlight ],
+			transition: 'slide' 
+		});
+	</script>
+</body>
+</html>
