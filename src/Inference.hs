@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Inference where
@@ -11,9 +10,7 @@ import qualified Data.Set as Set
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Identity
-import Data.List (nub)
 import Control.Monad
-import Data.Functor ((<&>))
 
 -- =========================================================================
 -- 1. SUBSTITUTABLE CLASS (The Patcher and Scanner)
@@ -32,7 +29,7 @@ instance Substitutable Type where
   apply s (TList t)  = TList (apply s t)
   apply s (TArr t1 t2) = TArr (apply s t1) (apply s t2)
   apply s (THtml t)  = THtml (apply s t)
-  apply _ t = t 
+  apply _ t = t
 
   ftv (TVar a)      = Set.singleton a
   ftv TInt          = Set.empty
@@ -52,14 +49,13 @@ instance Substitutable Scheme where
   ftv (Forall vars t) =
     ftv t `Set.difference` Set.fromList vars
 
--- FIX: Explicitly define instance for lists of Type to resolve GHC ambiguity
 instance Substitutable [Type] where
     apply s = map (apply s)
-    ftv   l = foldr (Set.union . ftv) Set.empty l
+    ftv = foldr (Set.union . ftv) Set.empty
 
 instance Substitutable TypeEnv where
   apply s = Map.map (apply s)
-  ftv env = ftv (Map.elems env) -- This now correctly calls the [Type] instance
+  ftv env = ftv (Map.elems env)
 
 -- =========================================================================
 -- 2. MONAD & UNIFICATION (The Control System and Solver)
@@ -108,11 +104,13 @@ unify t1 t2 = Left $ "Type mismatch: Cannot unify " ++ show t1 ++ " with " ++ sh
 -- 3. POLYMORPHISM HELPERS
 -- =========================================================================
 
+-- Generalize a type into a scheme. Very handy.
 generalize :: TypeEnv -> Type -> Scheme
 generalize env t = Forall vars t
   where
     vars = Set.toList $ ftv t `Set.difference` ftv env
 
+-- Instantiates a scheme into a type to implement proper polymorphism
 instantiate :: Scheme -> Infer Type
 instantiate (Forall vars t) = do
   freshVars <- mapM (const freshTVar) vars
@@ -126,11 +124,13 @@ instantiate (Forall vars t) = do
 inferExpr :: GlobalEnv -> TypeEnv -> Expr -> Infer (Subst, Type)
 inferExpr globalEnv env expr = case expr of
 
+  -- No substitutions for literals
   LitInt _    -> return (Map.empty, TInt)
   LitString _ -> return (Map.empty, TString)
   LitBool _   -> return (Map.empty, TBool)
   LitUnit     -> return (Map.empty, TUnit)
 
+  -- Look up variable name in local, then global environment
   Var name -> case Map.lookup name env of
     Just t -> return (Map.empty, t)
     Nothing -> case Map.lookup name globalEnv of
@@ -138,57 +138,63 @@ inferExpr globalEnv env expr = case expr of
         t <- instantiate scheme
         return (Map.empty, t)
       Nothing -> throwError $ "Undeclared variable or function: " ++ name
-  
+
+  -- Function application: First infer function type, then argument type, then make sure tv is sane.
   Apply e1 e2 -> do
     tv <- freshTVar
     (s1, t1) <- inferExpr globalEnv env e1
     (s2, t2) <- inferExpr globalEnv (apply s1 env) e2
-    
+
     s3 <- liftEither $ unify (apply s2 t1) (TArr t2 tv)
-    
+
     let s_total = s3 `composeSubst` s2 `composeSubst` s1
     return (s_total, apply s_total tv)
-  
+
   LitList elements -> do
     tv <- freshTVar
+    -- Polymorphic empty list
     if null elements
       then return (Map.empty, TList tv)
+      -- If non-empty, tv is unified with the type of the first element
       else do
         (s1, t1) <- inferExpr globalEnv env (head elements)
-        
-        (s_rest, _) <- foldM (\(current_s, current_t) e -> do
+        -- Check rest of list, but ignore type
+        (s_rest, _) <- foldM (\(current_s, _) e -> do
                                (s_e, t_e) <- inferExpr globalEnv (apply current_s env) e
                                s_u <- liftEither $ unify (apply s_e t1) (apply s_e t_e)
                                return (s_u `composeSubst` s_e `composeSubst` current_s, apply s_u t_e)
                           ) (s1, t1) (tail elements)
-                          
+
         s_final <- liftEither $ unify (apply s_rest t1) tv
         let s_total = s_final `composeSubst` s_rest
-        
+
         return (s_total, TList (apply s_total t1))
 
   BinOp op e1 e2 -> inferBinOp globalEnv env op e1 e2
   Concat e1 e2 -> inferConcat globalEnv env e1 e2
 
+  -- Check argument is bool
   UnOp Not e1 -> do
     (s1, t1) <- inferExpr globalEnv env e1
     s2 <- liftEither $ unify t1 TBool
     let s_total = s2 `composeSubst` s1
     return (s_total, TBool)
 
+  -- Check if cond is a bool, then unify the branch types
   IfThenElse cond thenE elseE -> do
     (s1, t_cond) <- inferExpr globalEnv env cond
     s_cond <- liftEither $ unify t_cond TBool
-    
-    env' <- pure $ apply s_cond env
+
+    let env' = apply s_cond env
     (s2, t_then) <- inferExpr globalEnv env' thenE
     (s3, t_else) <- inferExpr globalEnv (apply s2 env') elseE
-    
+
     s_branch <- liftEither $ unify (apply s3 t_then) t_else
-    
+
     let s_total = s_branch `composeSubst` s3 `composeSubst` s2 `composeSubst` s_cond `composeSubst` s1
     return (s_total, apply s_total t_else)
 
+  -- Check the block, infer all expressions, get to the last one, then return its type as block type
   Block exprs -> case reverse exprs of
     [] -> return (Map.empty, TUnit)
     (lastE:restE) -> do
@@ -196,11 +202,13 @@ inferExpr globalEnv env expr = case expr of
         (s_last, t_last) <- inferExpr globalEnv (apply s_rest env) lastE
         let s_total = s_last `composeSubst` s_rest
         return (s_total, apply s_total t_last)
-        
+
+  -- Wonky do-blocks, dunno if I'll remove them entirely from the language later
   DoBlock exprs -> do
     (s, _) <- foldM (\(s_acc, _) e -> inferExpr globalEnv (apply s_acc env) e) (Map.empty, TUnit) exprs
     return (s, TUnit)
 
+  -- Same logic as inferBinOp, but we allow the Apply inference to run since we treat these as funcs
   OpAsFunction op -> do
     t_arg1 <- freshTVar
     t_arg2 <- freshTVar
@@ -213,7 +221,7 @@ inferExpr globalEnv env expr = case expr of
       Div -> unifyOp TInt TInt TInt t_arg1 t_arg2 t_res
       And -> unifyOp TBool TBool TBool t_arg1 t_arg2 t_res
       Or  -> unifyOp TBool TBool TBool t_arg1 t_arg2 t_res
-      Eq  -> unifyOp t_arg1 t_arg2 TBool t_arg1 t_arg2 t_res 
+      Eq  -> unifyOp t_arg1 t_arg2 TBool t_arg1 t_arg2 t_res
       Neq -> unifyOp t_arg1 t_arg2 TBool t_arg1 t_arg2 t_res
       Lt  -> unifyOp TInt TInt TBool t_arg1 t_arg2 t_res
       Gt  -> unifyOp TInt TInt TBool t_arg1 t_arg2 t_res
@@ -270,9 +278,9 @@ inferConcat :: GlobalEnv -> TypeEnv -> Expr -> Expr -> Infer (Subst, Type)
 inferConcat globalEnv env e1 e2 = do
   (s1, t1) <- inferExpr globalEnv env e1
   (s2, t2) <- inferExpr globalEnv (apply s1 env) e2
-  
+
   s3 <- liftEither $ unify (apply s2 t1) TString
   s4 <- liftEither $ unify (apply s3 t2) TString
-  
+
   let s_total = s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1
   return (s_total, TString)

@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module TypeChecker where
@@ -8,9 +7,8 @@ import Types
 import Inference 
 import qualified Data.Map as Map
 import Control.Monad
-import Data.Functor ((<&>))
 
--- | Final helper to infer a single function definition (let-binding)
+-- | Helper to infer a single function definition (let-binding)
 inferFunction :: GlobalEnv -> Function -> Either String (Subst, Scheme)
 inferFunction globalEnv Function{funcName, funcTypeSignature, funcArgs, funcBody} = do
     -- 1. Setup local environment (Monotype variables for arguments)
@@ -38,7 +36,7 @@ inferFunction globalEnv Function{funcName, funcTypeSignature, funcArgs, funcBody
       else Left $ "Type error in function '" ++ funcName ++ "': Declared return type is " ++ show (apply s_final expectedReturnType) ++ " but inferred body type is " ++ show (apply s_final t_body)
 
 
--- Helper to unpack a curried function type (reused from old file)
+-- Helper to unpack a curried function type
 unpackFunctionType :: Type -> Int -> String -> Either String ([Type], Type)
 unpackFunctionType funcType numArgs funcName = go funcType numArgs []
   where
@@ -64,8 +62,8 @@ checkProgram funcs = do
 
   let stdBuiltInFuncs = Map.fromList
         [ ("toString", generalize Map.empty (TArr TInt TString))
-        , ("print", generalize Map.empty (TArr TString TUnit))
-        , ("id", generalize Map.empty (TArr (TVar "a") (TVar "a"))) -- Added polymorphic identity
+        , ("print", generalize Map.empty (TArr (TVar "a") TUnit))
+        , ("id", generalize Map.empty (TArr (TVar "b") (TVar "b")))
         ]
         
   let initialGlobalEnv = Map.union htmlBuiltInSchemes stdBuiltInFuncs

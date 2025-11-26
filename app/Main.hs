@@ -28,6 +28,7 @@ main = do
           putStrLn "--- Parsing Failed ---"
           putStrLn (errorBundlePretty errBundle)
         Right functions -> do
+          print functions
           putStrLn "--- Parsing Successful ---"
 
           -- 3. Type Checking

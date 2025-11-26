@@ -11,11 +11,11 @@ data Expr
   | LitUnit
   | Concat Expr Expr
   | Apply Expr Expr
-  | BinOp BinOperator Expr Expr -- New: For binary operators (+, -, *, /, &&, ||, ==, !=, <, >, <=, >=)
-  | UnOp UnOperator Expr      -- New: For unary operators (not)
+  | BinOp BinOperator Expr Expr -- For binary operators (+, -, *, /, &&, ||, ==, !=, <, >, <=, >=)
+  | UnOp UnOperator Expr      -- For unary operators (not)
   | Block [Expr]
   | DoBlock [Expr]
-    -- NEW: Treat a binary operator itself as a value, e.g. (+)
+    -- Treat a binary operator itself as a value, e.g. (+)
   | OpAsFunction BinOperator
   | IfThenElse Expr Expr Expr -- If-else statements finally
   deriving (Show, Eq)
