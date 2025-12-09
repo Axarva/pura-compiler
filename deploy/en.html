@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pura: UI-Oriented Functional Language</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .lang-switch {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            background: rgba(255,255,255,0.8);
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-family: sans-serif;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .lang-switch:hover { background: #eee; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="lang-switch">🇯🇵 日本語版</a>
+    
+    <div id="app"></div>
+    <script src="presentation_pro.pura.js"></script>
+</body>
+</html>
