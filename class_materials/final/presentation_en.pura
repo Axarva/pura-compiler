@@ -1,5 +1,5 @@
 -- presentation_en.pura
--- Final Rehearsal Version (Revised Flow)
+-- Final University Rehearsal Version (English + Separate End Slide)
 
 -- 1. MODEL --------------------------------------------------------------------
 initialModel : List String
@@ -7,31 +7,34 @@ let initialModel = ["0", "Smile at audience"]
 
 -- 2. LOGIC & HELPERS ----------------------------------------------------------
 
--- Change slide index
+-- Change slide (Bounded 0-8)
 changeSlide : List String -> Int -> List String
 let changeSlide = model => delta =>
   let currentIdx = parseInt (head model) in
-  cons (toString (currentIdx + delta)) (tail model)
+  let newIdx = currentIdx + delta in
+  -- Boundary Check (Max Slide = 8)
+  let finalIdx = 
+    if newIdx < 0 then 0 
+    else if newIdx > 8 then 8 
+    else newIdx 
+  in
+  cons (toString finalIdx) (tail model)
 
--- Add a new task using Browser Prompt
 addTodo : List String -> List String
 let addTodo = model =>
-  let input = prompt "Enter a new task:" in
+  let input = prompt "Enter Task Name:" in
   cons (head model) (cons input (tail model)) REQUIRES BrowserPrompt
 
--- Remove top task
 removeTop : List String -> List String
 let removeTop = model =>
   let slideIdx = head model in
   let todos = tail model in
   if isEmpty todos then model else cons slideIdx (tail todos)
 
--- Recursive Map
 mapTodos : (String -> Html String) -> List String -> List (Html String)
 let mapTodos = f => list =>
   if isEmpty list then [] else cons (f (head list)) (mapTodos f (tail list))
 
--- 3. UPDATE -------------------------------------------------------------------
 update : String -> List String -> List String
 let update = msg => model =>
   if msg == "NEXT" then changeSlide model 1
@@ -40,68 +43,75 @@ let update = msg => model =>
   else if msg == "DEL_TODO" then removeTop model
   else model
 
--- 4. VIEW HELPERS -------------------------------------------------------------
+-- 3. VIEW HELPERS -------------------------------------------------------------
 slideWrapper : List (Html String) -> Html String
 let slideWrapper = content => 
   div [ htmlClass "slide-container" ] [
-    div [ htmlClass "slide" ] content
+    div [ htmlClass "slide" ] content,
+    div [ htmlClass "nav-controls" ] [
+      button [ htmlOnClick "PREV", htmlClass "nav-btn" ] [ text "←" ],
+      button [ htmlOnClick "NEXT", htmlClass "nav-btn" ] [ text "→" ]
+    ]
   ]
 
 fragmentClass : Bool -> String
 let fragmentClass = isVisible => 
   if isVisible then "fragment visible" else "fragment"
 
--- 5. SLIDES (CONTENT) ---------------------------------------------------------
+codeSpan : String -> String -> Html String
+let codeSpan = cls => txt => 
+  div [ htmlClass ("inline-code " ++ cls) ] [ text txt ]
 
--- Slide 0: Title
+kw : String -> Html String
+let kw = t => codeSpan "kw" t
+str : String -> Html String
+let str = t => codeSpan "str" t
+fn : String -> Html String
+let fn = t => codeSpan "fn" t
+cmt : String -> Html String
+let cmt = t => codeSpan "cmt" t
+norm : String -> Html String
+let norm = t => codeSpan "norm" t
+line : List (Html String) -> Html String
+let line = content => div [ htmlClass "code-line" ] content
+
+-- 4. SLIDES -------------------------------------------------------------------
+
+-- 0. Title
 viewTitle : Int -> Html String
 let viewTitle = idx =>
   slideWrapper [
     h1 [ htmlClass "title" ] [ text "Pura" ],
     p [ htmlClass "subtitle" ] [ text "A UI-Oriented Functional Language" ],
-    p [] [ text "Easier than JavaScript. Safer with Types." ]
+    p [] [ text "Bridging Compiler Theory and Frontend Application." ]
   ]
 
--- Slide 1: The Problem (Realistic JS Bug)
+-- 1. Problem
 viewProblem : Int -> Html String
 let viewProblem = idx =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "The Problem: Fragility" ],
-    p [ htmlClass "subtitle" ] [ text "Can you spot the bugs?" ],
-    
+    h1 [] [ text "Challenge: Runtime Instability" ],
+    p [ htmlClass "subtitle" ] [ text "The cognitive load of defensive coding." ],
     div [ htmlClass "code-block" ] [
-      text "function process(user) {\n  // 1. Assignment in condition (Classic!)\n  if (user.role = 'admin') {\n    // 2. Undefined check hell\n    if (user.data && user.data.items) {\n       return user.data.items.map(i => i * 2);\n    }\n  }\n}"
+      line [ kw "function", norm " processUserData(user) {" ],
+      line [ norm "  ", kw "let", norm " result ", kw "=", kw " null", norm ";" ],
+      line [ norm "  ", cmt "// Defensive nesting hell" ],
+      line [ norm "  ", kw "if", norm " (user ", kw "&&", norm " user.meta) {" ],
+      line [ norm "    ", cmt "// BUG: Assignment instead of equality" ],
+      line [ norm "    ", kw "if", norm " (user.role ", kw "=", str " 'admin'", norm ") {" ],
+      line [ norm "      ", kw "if", norm " (", kw "typeof", norm " user.score ", kw "!==", str " 'undefined'", norm ") {" ],
+      line [ norm "        result ", kw "=", norm " user.score * 2;" ],
+      line [ norm "      }" ],
+      line [ norm "    }" ],
+      line [ norm "  }" ],
+      line [ norm "  ", cmt "// Potential Crash: result might be null" ],
+      line [ norm "  ", kw "return", norm " result.toString();" ],
+      line [ norm "}" ]
     ],
-    p [ htmlClass "fragment visible" ] [ text "Silent failures. Runtime crashes. Stress." ]
+    p [ htmlClass "fragment visible" ] [ text "One typo can crash the production runtime." ]
   ]
 
--- Slide 2: The Irony (Setup for Reveal)
-viewIrony : Int -> Html String
-let viewIrony = idx =>
-  slideWrapper [
-    h1 [ htmlClass "title" ] [ text "The Irony" ],
-    p [ htmlClass "subtitle" ] [ text "I know what you're thinking..." ],
-    ul [] [
-      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "\"You're criticizing Web Development...\"" ],
-      li [ htmlClass (fragmentClass (idx >= 2)) ] [ text "\"But isn't this presentation running in a Browser?\"" ],
-      li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "\"Are you just using HTML/JS too?\"" ]
-    ]
-  ]
-
--- Slide 3: The Reveal
-viewReveal : Int -> Html String
-let viewReveal = idx =>
-  slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Actually... No." ],
-    p [ htmlClass "subtitle" ] [ text "This is Pura." ],
-    ul [] [
-      li [ htmlClass "fragment visible" ] [ text "This entire slide deck is self-hosted." ],
-      li [ htmlClass "fragment visible" ] [ text "Zero lines of manual HTML written." ],
-      li [ htmlClass "fragment visible" ] [ text "Zero lines of manual JavaScript written." ]
-    ]
-  ]
-
--- Slide 4: The Hook (Demo)
+-- 2. Demo
 viewTodoItem : String -> Html String
 let viewTodoItem = item =>
   li [ htmlClass "todo-item" ] [ text item ]
@@ -109,72 +119,107 @@ let viewTodoItem = item =>
 viewDemo : List String -> Html String
 let viewDemo = model =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Proof: Live Demo" ],
-    p [] [ text "A stateful, interactive app running inside the slides." ],
-    
+    h1 [ htmlClass "title" ] [ text "Demonstration" ],
+    p [] [ text "The following application is running within the Pura Runtime." ],
     div [ htmlClass "todo-container" ] [
       ul [] (mapTodos viewTodoItem (tail model))
     ],
-
     div [] [
       button [ htmlOnClick "ADD_TODO", htmlClass "btn-primary" ] [ text "Add Task" ],
       text " ", 
-      button [ htmlOnClick "DEL_TODO", htmlClass "btn-secondary" ] [ text "Finish Top" ]
+      button [ htmlOnClick "DEL_TODO", htmlClass "btn-secondary" ] [ text "Complete Top" ]
     ]
   ]
 
--- Slide 5: Solution - Comparison (Rosetta Stone)
+-- 3. Comparison
 viewComparison : Int -> Html String
 let viewComparison = idx =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Why Pura?" ],
-    p [ htmlClass "subtitle" ] [ text "Escaping the Syntax Hell." ],
-    
-    div [ htmlClass "two-column" ] [ -- Assuming style.css allows side-by-side or we stack
-        p [] [ text "JavaScript (Bracket Noise)" ],
-        div [ htmlClass "code-block", htmlClass "fragment visible" ] [
-        text "const update = (msg, model) => {\n  if (msg === 'NEXT') {\n    return { ...model, id: id + 1 };\n  } else {\n    return model;\n  }\n};"
-        ],
-
-        p [] [ text "Pura (Expression Oriented)" ],
-        div [ htmlClass "code-block", htmlClass "fragment visible" ] [
-        text "let update = msg => model =>\n  if msg == \"NEXT\" then\n    { model | id = id + 1 }\n  else\n    model"
+    h1 [] [ text "Comparative Analysis" ],
+    div [ htmlClass "two-column" ] [
+      div [] [
+        div [ htmlClass "col-header" ] [ text "JavaScript (Imperative)" ],
+        div [ htmlClass "code-block" ] [
+          line [ kw "function", fn " sum", norm "(list) {" ],
+          line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
+          line [ norm "  ", kw "for", norm " (", kw "let", norm " i", kw "=", norm "0; i<list.length; i++) {" ],
+          line [ norm "    total ", kw "+=", norm " list[i];" ],
+          line [ norm "  }" ],
+          line [ norm "  ", kw "return", norm " total;" ],
+          line [ norm "}" ]
         ]
-    ]
+      ],
+      div [] [
+        div [ htmlClass "col-header" ] [ text "Pura (Declarative)" ],
+        div [ htmlClass "code-block" ] [
+          line [ kw "let", fn " sum", norm " ", kw "=", norm " list ", kw "=>" ],
+          line [ norm "  ", kw "if", norm " isEmpty list ", kw "then" ],
+          line [ norm "    0" ],
+          line [ norm "  ", kw "else" ],
+          line [ norm "    head list ", kw "+", norm " sum (tail list)" ]
+        ]
+      ]
+    ],
+    p [] [ text "Recursion provides mathematical correctness." ]
   ]
 
--- Slide 6: Solution - HM Inference
+-- 4. Inference
 viewInference : Int -> Html String
 let viewInference = idx =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "The Engine: Inference" ],
-    p [ htmlClass "subtitle" ] [ text "The compiler solves the types for you." ],
-    
+    h1 [] [ text "Hindley-Milner Inference" ],
+    p [ htmlClass "subtitle" ] [ text "Compile-time correctness guarantees." ],
     ul [] [
-      li [ htmlClass "fragment visible" ] [ text "Hindley-Milner Algorithm" ],
-      li [ htmlClass "fragment visible" ] [ text "It proves your program is safe." ],
-      li [ htmlClass "fragment visible" ] [ text "If it compiles, it runs." ]
+      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "Algorithm W: Deduces types without annotations." ],
+      li [ htmlClass (fragmentClass (idx >= 2)) ] [ text "Principal Types: Finds the most general type possible." ],
+      li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "Zero Runtime Errors: Well-typed programs cannot go wrong." ]
     ]
   ]
 
--- Slide 7: Roadmap
+-- 5. Effects
+viewEffects : Int -> Html String
+let viewEffects = idx =>
+  slideWrapper [
+    h1 [] [ text "Effect Management" ],
+    p [ htmlClass "subtitle" ] [ text "Explicit control over side effects." ],
+    ul [] [
+      li [ htmlClass "fragment visible" ] [ text "Unlike JavaScript, effects are explicit." ],
+      li [ htmlClass "fragment visible" ] [ text "Functions must declare required permissions." ]
+    ],
+    div [ htmlClass "code-block" ] [
+      line [ cmt "-- 'main' requires specific permissions to run" ],
+      line [ kw "let", fn " main", norm " ", kw "=", norm " { ... }" ],
+      line [ kw "  REQUIRES", norm " ConsoleWrite, BrowserPrompt" ]
+    ]
+  ]
+
+-- 6. Roadmap
 viewRoadmap : Int -> Html String
 let viewRoadmap = idx =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Future Work" ],
-    
+    h1 [] [ text "Future Work" ],
     ul [] [
-      li [ htmlClass "fragment visible" ] [ text "Koka Influence: Algebraic Effects" ],
-      li [ htmlClass "fragment visible" ] [ text "Better Control Flow & Testability" ]
+      li [ htmlClass "fragment visible" ] [ text "Algebraic Effects (Koka-inspired control flow)" ],
+      li [ htmlClass "fragment visible" ] [ text "WebAssembly (Wasm) Compilation Target" ],
+      li [ htmlClass "fragment visible" ] [ text "Standard Library Expansion" ]
     ]
   ]
 
--- Slide 8: End
+-- 7. Conclusion
+viewConclusion : Int -> Html String
+let viewConclusion = idx =>
+  slideWrapper [
+    h1 [ htmlClass "title" ] [ text "Conclusion" ],
+    p [ htmlClass "subtitle" ] [ text "Pura demonstrates that rigorous type theory can exist" ],
+    p [ htmlClass "subtitle" ] [ text "alongside modern, interactive UI development." ]
+  ]
+
+-- 8. End (Separate Slide)
 viewEnd : Int -> Html String
 let viewEnd = idx =>
   slideWrapper [
     h1 [ htmlClass "title" ] [ text "Thank You" ],
-    p [ htmlClass "footer" ] [ text "Built with Pura Compiler 2025" ]
+    p [] [ text "Built with Pura Compiler 2025" ]
   ]
 
 -- 6. MAIN DISPATCH ------------------------------------------------------------
@@ -182,19 +227,18 @@ view : List String -> Html String
 let view = model =>
   let idx = parseInt (head model) in
   
-  -- REVISED FLOW
   if idx == 0 then viewTitle idx
-  else if idx == 1 then viewProblem idx      -- 1. The Villain
-  else if idx == 2 then viewIrony 3          -- 2. The Setup (Irony)
-  else if idx == 3 then viewReveal idx       -- 3. The Twist (Reveal)
-  else if idx == 4 then viewDemo model       -- 4. The Proof (Demo)
-  else if idx == 5 then viewComparison idx   -- 5. The Logic (Comparison)
-  else if idx == 6 then viewInference idx    -- 6. The Science (Inference)
-  else if idx == 7 then viewRoadmap idx
+  else if idx == 1 then viewProblem idx
+  else if idx == 2 then viewDemo model
+  else if idx == 3 then viewComparison idx
+  else if idx == 4 then viewInference 3
+  else if idx == 5 then viewEffects idx
+  else if idx == 6 then viewRoadmap idx
+  else if idx == 7 then viewConclusion idx
   else viewEnd idx
 
 -- 7. ENTRY POINT --------------------------------------------------------------
 main : Unit
 let main = {
-  print "Starting Presentation (EN)..."
+  print "Starting University Rehearsal (EN)..."
 } REQUIRES ConsoleWrite, BrowserPrompt
