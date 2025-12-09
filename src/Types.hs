@@ -1,7 +1,6 @@
 module Types where
 
 import qualified Data.Map as Map
-import Data.List (nub)
 
 -- Represents types in your language
 data Type
@@ -12,7 +11,7 @@ data Type
   | TList Type   -- List type, parameterized by the type of its elements (e.g., List Int)
   | TArr Type Type -- Function type: argument type -> return type (for currying)
   | TError String    -- Used to signal and carry type error messages
-  | TAttribute   -- ADDED 2025/10/15: Represents an HTML attribute, like `class="btn"`
+  | TAttribute Type   -- Attributes now carry types and are polymporphic for robust propagation between components
   | THtml Type   -- ADDED 2025/10/15: Represents an HTML node, parameterized by the message type (e.g., Html Msg)
   | TMsg
   | TVar String  -- ADDED 2025/11/19: For HM type inference
@@ -31,4 +30,5 @@ type Subst = Map.Map String Type
 type GlobalEnv = Map.Map String Scheme
 
 -- Local environment for function parameters and local bindings
-type TypeEnv = Map.Map String Type
+-- Now holds schemes just like GlobalEnv since we have let polymorphism
+type TypeEnv = Map.Map String Scheme

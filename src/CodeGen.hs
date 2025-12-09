@@ -30,16 +30,35 @@ mapBuiltin name = case name of
   -- Utility
   "toString" -> "String"
   "print"    -> "PuraRuntime.print"
+  -- LIST PRIMITIVES
+  "head" -> "(list => list[0])"
+  "tail" -> "(list => list.slice(1))"
+  "cons" -> "(item => list => [item, ...list])"
+  "isEmpty" -> "(list => list.length === 0)"
   
+  -- PARSING
+  "parseInt" -> "parseInt"
+  -- BROWSER PROMPT
+  "prompt"   -> "window.prompt"
   _        -> name
 
+escapeJSString :: String -> String
+escapeJSString s = "\"" ++ concatMap escapeChar s ++ "\""
+  where
+    escapeChar c = case c of
+      '"'  -> "\\\""
+      '\\' -> "\\\\"
+      '\n' -> "\\n"
+      '\r' -> "\\r"
+      '\t' -> "\\t"
+      x    -> [x]  -- Keep Japanese characters as they are
 
 generateExpr :: Expr -> String
 generateExpr expr = case expr of
   -- Literals to string representation.
   LitInt n      -> show n
   LitBool b     -> if b then "true" else "false"
-  LitString s   -> show s
+  LitString s   -> escapeJSString s
   LitUnit     -> "null"
 
   -- A variable in Pura is a variable in JS.
@@ -113,6 +132,9 @@ generateExpr expr = case expr of
   DoBlock exprs ->
     let stmts = map (\e -> generateExpr e ++ ";") exprs
     in "(() => { " ++ concat stmts ++ "})()"
+
+  Let name val body ->
+    "(((" ++ name ++ ") => " ++ generateExpr body ++ ")(" ++ generateExpr val ++ "))"
 
       -- Other cases to add later...
   _ -> "/* unhandled AST node */"

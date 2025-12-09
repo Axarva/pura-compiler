@@ -29,6 +29,7 @@ instance Substitutable Type where
   apply s (TList t)  = TList (apply s t)
   apply s (TArr t1 t2) = TArr (apply s t1) (apply s t2)
   apply s (THtml t)  = THtml (apply s t)
+  apply s (TAttribute t) = TAttribute (apply s t)
   apply _ t = t
 
   ftv (TVar a)      = Set.singleton a
@@ -39,6 +40,7 @@ instance Substitutable Type where
   ftv (TList t)     = ftv t
   ftv (TArr t1 t2)  = ftv t1 `Set.union` ftv t2
   ftv (THtml t)     = ftv t
+  ftv (TAttribute t)     = ftv t
   ftv _             = Set.empty
 
 instance Substitutable Scheme where
@@ -49,9 +51,9 @@ instance Substitutable Scheme where
   ftv (Forall vars t) =
     ftv t `Set.difference` Set.fromList vars
 
-instance Substitutable [Type] where
-    apply s = map (apply s)
-    ftv = foldr (Set.union . ftv) Set.empty
+instance Substitutable a => Substitutable [a] where
+  apply s = map (apply s)
+  ftv   = foldr (Set.union . ftv) Set.empty
 
 instance Substitutable TypeEnv where
   apply s = Map.map (apply s)
@@ -98,6 +100,7 @@ unify (TArr t1 t2) (TArr t3 t4) = do
   return (s2 `composeSubst` s1)
 unify (TList t1) (TList t2) = unify t1 t2
 unify (THtml t1) (THtml t2) = unify t1 t2
+unify (TAttribute t1) (TAttribute t2) = unify t1 t2
 unify t1 t2 = Left $ "Type mismatch: Cannot unify " ++ show t1 ++ " with " ++ show t2
 
 -- =========================================================================
@@ -132,7 +135,9 @@ inferExpr globalEnv env expr = case expr of
 
   -- Look up variable name in local, then global environment
   Var name -> case Map.lookup name env of
-    Just t -> return (Map.empty, t)
+    Just scheme -> do
+      t <- instantiate scheme
+      return (Map.empty, t)
     Nothing -> case Map.lookup name globalEnv of
       Just scheme -> do
         t <- instantiate scheme
@@ -229,6 +234,27 @@ inferExpr globalEnv env expr = case expr of
       Ge  -> unifyOp TInt TInt TBool t_arg1 t_arg2 t_res
 
     return (Map.empty, t_func)
+
+  Let name val body -> do
+    -- 1. Infer the type of the value (e.g., "x => x")
+    (s1, t1) <- inferExpr globalEnv env val
+    
+    -- 2. Apply substitutions to the environment
+    let env' = apply s1 env
+    
+    -- 3. GENERALIZE: Make it polymorphic relative to the environment
+    -- Creates a Scheme like: forall a. a -> a
+    let scheme = generalize env' t1
+    
+    -- 4. Extend the environment with the new scheme
+    let env'' = Map.insert name scheme env'
+    
+    -- 5. Infer the body in this new, extended environment
+    (s2, t2) <- inferExpr globalEnv env'' body
+    
+    -- 6. Combine substitutions
+    let s_total = s2 `composeSubst` s1
+    return (s_total, t2)
 
 unifyOp :: Type -> Type -> Type -> Type -> Type -> Type -> Infer Type
 unifyOp t_a t_b t_r t_arg1 t_arg2 t_res = do

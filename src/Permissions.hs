@@ -29,12 +29,15 @@ gatherEffects expr = case expr of
   Block exprs   -> concatMap gatherEffects exprs
   DoBlock exprs -> concatMap gatherEffects exprs
   IfThenElse cond thenE elseE -> gatherEffects cond ++ gatherEffects thenE ++ gatherEffects elseE
-  -- MODIFIED: Handle the Apply node (cleaned signature)
+  Let _ val body -> gatherEffects val ++ gatherEffects body
+  -- Handle Application (Checking for restricted functions like 'print')
   Apply funcExpr argExpr ->
     let funcEffects = gatherEffects funcExpr
         argEffects  = gatherEffects argExpr
         callEffect  = case funcExpr of
                         Var "print" -> [ConsoleWrite]
-                        -- Placeholder for more complex effect lookups later
+                        Var "prompt" -> [BrowserPrompt]
+                        -- In the future, we would look up 'funcExpr' in GlobalEnv
+                        -- to see if that function requires effects.
                         _           -> [] 
     in callEffect ++ funcEffects ++ argEffects

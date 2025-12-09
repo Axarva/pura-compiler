@@ -1,5 +1,6 @@
 module Main where
 
+import System.IO (readFile, writeFile, hSetEncoding, stdout, stderr, utf8)
 import System.Environment (getArgs)
 import Text.Megaparsec (runParser, errorBundlePretty) -- Changed 'parse' to 'runParser' for clarity
 import Lexer (tokenize)
@@ -12,6 +13,9 @@ import System.FilePath ((<.>)) -- for paths
 
 main :: IO ()
 main = do
+  hSetEncoding stdout utf8
+  hSetEncoding stderr utf8
+
   args <- getArgs
   case args of
     [filePath] -> do
@@ -28,7 +32,7 @@ main = do
           putStrLn "--- Parsing Failed ---"
           putStrLn (errorBundlePretty errBundle)
         Right functions -> do
-          print functions
+          -- print functions
           putStrLn "--- Parsing Successful ---"
 
           -- 3. Type Checking
@@ -53,7 +57,7 @@ main = do
                   let generatedCode = CG.generateProgram functions -- Using the function from CodeGen.hs
                   
                   writeFile outPath generatedCode
-                  putStrLn generatedCode
+                  -- putStrLn generatedCode
                   putStrLn "----------------------"
                   putStrLn $ "Successfully wrote generated code to " ++ outPath
 

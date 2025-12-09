@@ -16,6 +16,7 @@ data Token = Token
 
 data TokenType
   = TokLet
+  | TokIn -- Pura will finally have nested let!
   -- Keywords and symbols
   | TokDo
   | TokIf
@@ -149,6 +150,7 @@ nextToken s@(c:_) line col
           len = length ident
           tokType = case ident of
             "let"      -> TokLet
+            "in"       -> TokIn
             "if"       -> TokIf
             "then"     -> TokThen
             "else"     -> TokElse
@@ -161,12 +163,36 @@ nextToken s@(c:_) line col
 
 -- String literals
 nextToken ('"' : rest) line col =
-    let (strContent, afterStr) = span (/= '"') rest
-        len = length strContent + 2  -- +2 for the quotes
-    in case afterStr of
-        ('"' : remaining) ->
-          (Token (TokStringLiteral strContent) line col, remaining, line, col + len)
-        _ -> error $ "Unterminated string at line " ++ show line ++ ", column " ++ show col
+    let 
+      parseStringContent [] = error $ "Unterminated string starting at line " ++ show line
+      
+      -- 1. Closing Quote: We are done.
+      parseStringContent ('"' : xs) = ("", xs)
+      
+      -- 2. Escape Sequences: We consume the backslash and produce the REAL char.
+      parseStringContent ('\\' : 'n' : xs)  = consChar '\n' xs
+      parseStringContent ('\\' : 't' : xs)  = consChar '\t' xs
+      parseStringContent ('\\' : 'r' : xs)  = consChar '\r' xs
+      parseStringContent ('\\' : '"' : xs)  = consChar '"'  xs
+      parseStringContent ('\\' : '\\' : xs) = consChar '\\' xs
+      
+      -- 3. Any other escape (e.g. \'): Just return the character, DROP the backslash.
+      -- This solves your single quote issue! \' becomes '
+      parseStringContent ('\\' : c : xs)    = consChar c xs
+      
+      -- 4. Normal characters
+      parseStringContent (x : xs) = consChar x xs
+
+      -- Helper to chain the recursive calls
+      consChar c list = 
+          let (str, rem) = parseStringContent list
+          in (c : str, rem)
+
+      (strContent, remaining) = parseStringContent rest
+      -- Calculate rough length for column update (not perfect for tabs, but fine for error reporting)
+      len = length strContent + 2 
+    in 
+      (Token (TokStringLiteral strContent) line col, remaining, line, col + len)
 
 -- Unexpected character
 nextToken (c:_) line col =

@@ -15,6 +15,7 @@ data Expr
   | UnOp UnOperator Expr      -- For unary operators (not)
   | Block [Expr]
   | DoBlock [Expr]
+  | Let String Expr Expr      -- Local let bindings!!!
     -- Treat a binary operator itself as a value, e.g. (+)
   | OpAsFunction BinOperator
   | IfThenElse Expr Expr Expr -- If-else statements finally
@@ -39,4 +40,4 @@ data Function = Function
   } deriving (Show, Eq)
 
 
-data Effect = ConsoleWrite | FileIO | Network deriving (Show, Eq)
+data Effect = ConsoleWrite | FileIO | Network | BrowserPrompt deriving (Show, Eq)

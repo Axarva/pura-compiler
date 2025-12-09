@@ -93,6 +93,11 @@ parseHtmlType = do
   _ <- satisfy $ isIdentifier "Html"
   THtml <$> parseBasicType
 
+parseAttributeType :: Parser Type
+parseAttributeType = do
+  _ <- satisfy $ isIdentifier "Attribute"
+  TAttribute <$> parseBasicType
+
 -- BNF: <arrow_type> ::= <basic_type> ( "->" <arrow_type> )?
 -- Parses function arrow types (right-associative: A -> B -> C is A -> (B -> C))
 parseArrowType :: Parser Type
@@ -106,10 +111,10 @@ parseBasicType =
   <|> (do _ <- satisfy (isIdentifier "String"); return TString)
   <|> (do _ <- satisfy (isIdentifier "Bool"); return TBool)
   <|> (do _ <- satisfy (isIdentifier "Unit"); return TUnit)
-  <|> (do _ <- satisfy (isIdentifier "Attribute"); return TAttribute)
   <|> (do _ <- satisfy (isIdentifier "Msg"); return TMsg)
   <|> parseListType
   <|> parseHtmlType
+  <|> parseAttributeType
   <|> (do matchTok L.TokLParen; t <- parseType; matchTok L.TokRParen; return t)
 
 -- BNF: <list_type> ::= "List" <basic_type>
@@ -132,6 +137,16 @@ parseLet = do
   name <- identifier
   matchTok L.TokEquals
   return name
+
+-- BNF: "let" <identifier> "=" <expr> "in" <expr>
+parseLetExpr :: Parser Expr
+parseLetExpr = do
+  matchTok L.TokLet
+  name <- identifier
+  matchTok L.TokEquals
+  val <- parseExpr
+  matchTok L.TokIn
+  Let name val <$> parseExpr
 
 parseIfElse :: Parser Expr
 parseIfElse = do
@@ -307,9 +322,10 @@ isBinOpToken tok = case L.tokType tok of
 parseAtom :: Parser Expr
 parseAtom =
       parseStringLiteral
+  <|> try parseLetExpr
   <|> parseBoolLiteral
   <|> parseIntLiteral
-  <|> try (do -- <<< ADD THIS BLOCK to parse the Unit literal '()'
+  <|> try (do
               _ <- matchTok L.TokLParen
               _ <- matchTok L.TokRParen
               return LitUnit)
@@ -318,7 +334,7 @@ parseAtom =
   <|> try parseListLiteral
   <|> try (do v <- parseVariable; notFollowedBy (matchTok L.TokColon); return v)
   <|> parseDoBlock
-  <|> (do -- This now handles both regular parenthesized expressions AND (op)
+  <|> (do
           _ <- matchTok L.TokLParen
           expr <- try (do -- Operator as Function: (op)
                           op <- satisfy (isJust . isBinOpToken)
@@ -398,6 +414,7 @@ parseEffectName = do
     "ConsoleWrite" -> return ConsoleWrite
     "FileIO"       -> return FileIO
     "Network"      -> return Network
+    "BrowserPrompt"-> return BrowserPrompt
     _              -> fail ("Unknown effect: " ++ eff)
 
 --------------------------------------------------------------------------------

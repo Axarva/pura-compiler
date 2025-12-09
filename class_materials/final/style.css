@@ -1,0 +1,180 @@
+/* style.css - The "Reveal-ish" Theme */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@700&family=Fira+Code&display=swap');
+
+:root {
+    --r-main-font: 'Noto Sans JP', sans-serif;
+    --r-heading-font: 'Noto Serif JP', serif;
+    --r-code-font: 'Fira Code', monospace;
+    --r-background-color: #fdfdfd;
+    --accent-color: #005fcc;
+    --text-color: #333;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--r-main-font);
+    color: var(--text-color);
+    /* The Reveal.js Gradient Background */
+    background-color: var(--r-background-color);
+    background-image: linear-gradient(rgba(0, 0, 0, 0.02) .1em, transparent .1em), 
+                      linear-gradient(90deg, rgba(0, 0, 0, 0.02) .1em, transparent .1em);
+    background-size: 2em 2em;
+    overflow: hidden;
+    transition: background 0.5s ease;
+}
+
+.slide-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.slide {
+    width: 80%;
+    max-width: 1000px;
+    text-align: center;
+    /* KEY: This triggers the animation every time the slide renders */
+    animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+h1, h2, h3 {
+    font-family: var(--r-heading-font);
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #222;
+}
+
+.title { font-size: 3.5rem; }
+.subtitle { font-size: 1.2rem; color: #666; margin-bottom: 40px; }
+
+/* Code Blocks */
+.code-block {
+    background: #fff;
+    padding: 25px;
+    border-radius: 5px;
+    font-family: var(--r-code-font);
+    text-align: left;
+    font-size: 1.0rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #eee;
+    margin: 30px auto;
+    display: inline-block;
+}
+
+/* FRAGMENTS (Fade-ins) */
+.fragment {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+}
+
+.fragment.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ANIMATIONS */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.todo-container {
+    background: white;
+    padding: 0; /* Let list items handle padding */
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin: 30px auto;
+    width: 100%;
+    max-width: 500px;
+    min-height: 150px;
+    text-align: left;
+    overflow: hidden; /* Clips the corners of the list items */
+    border: 1px solid #eaeaea;
+}
+
+/* The List Items */
+.todo-item {
+    list-style: none;
+    padding: 16px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 1.2rem;
+    color: #444;
+    animation: fadeInUp 0.3s ease; /* Smooth entry */
+    display: flex;
+    align-items: center;
+}
+
+.todo-item:last-child {
+    border-bottom: none;
+}
+
+.todo-item::before {
+    content: "•";
+    color: var(--accent-color);
+    font-size: 1.5rem;
+    margin-right: 15px;
+    line-height: 1;
+}
+
+/* --- BUTTONS --- */
+
+button {
+    font-family: var(--r-main-font);
+    font-weight: 700;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    margin: 0 8px; /* Spacing between buttons */
+    outline: none;
+}
+
+/* Primary Action (Add) */
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 95, 204, 0.3);
+}
+
+.btn-primary:hover {
+    background: #004bb5; /* Darker Blue */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 95, 204, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 95, 204, 0.3);
+}
+
+/* Secondary Action (Delete) */
+.btn-secondary {
+    background: #f1f3f5;
+    color: #555;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.btn-secondary:hover {
+    background: #e9ecef;
+    color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}

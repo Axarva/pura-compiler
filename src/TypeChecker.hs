@@ -16,7 +16,7 @@ inferFunction globalEnv Function{funcName, funcTypeSignature, funcArgs, funcBody
     (expectedArgTypes, expectedReturnType) <- liftEither $ unpackFunctionType funcTypeSignature (length funcArgs) funcName
 
     -- Create local Monotype Environment (TVar for each argument)
-    let env = Map.fromList (zip funcArgs expectedArgTypes)
+    let env = Map.fromList [ (name, Forall [] t) | (name, t) <- zip funcArgs expectedArgTypes ]
     
     -- 2. Infer the function body
     (s_body, t_body) <- inferExpr globalEnv env funcBody
@@ -50,37 +50,60 @@ unpackFunctionType funcType numArgs funcName = go funcType numArgs []
 checkProgram :: [Function] -> Either String GlobalEnv
 checkProgram funcs = do
   -- Built-in functions must be Schematized (Rule 1)
-  let elemType = TArr (TList TAttribute) (TArr (TList (THtml TMsg)) (THtml TMsg))
+  let msgVar = TVar "msg"
+  let elemType = TArr (TList (TAttribute msgVar)) (TArr (TList (THtml msgVar)) (THtml msgVar))
 
   let htmlBuiltInSchemes = Map.fromList
-        [ ("div", generalize Map.empty elemType)
-        , ("p", generalize Map.empty elemType)
-        , ("button", generalize Map.empty elemType)
-        , ("h1", generalize Map.empty elemType)
+        [ 
+          -- Explicitly say ["msg"] to tell the compiler this variable is generic.
+          ("div",    Forall ["msg"] elemType)
+        , ("p",      Forall ["msg"] elemType)
+        , ("button", Forall ["msg"] elemType)
+        , ("h1",     Forall ["msg"] elemType)
         
-        -- LAYOUT TAGS
-        , ("section", generalize Map.empty elemType)
-        , ("header", generalize Map.empty elemType)
-        , ("footer", generalize Map.empty elemType)
-        , ("ul", generalize Map.empty elemType)
-        , ("li", generalize Map.empty elemType)
+        -- Layout Tags
+        , ("section", Forall ["msg"] elemType)
+        , ("header",  Forall ["msg"] elemType)
+        , ("footer",  Forall ["msg"] elemType)
+        , ("ul",      Forall ["msg"] elemType)
+        , ("li",      Forall ["msg"] elemType)
 
-        -- TEXT NODE (Kept as 'text' because it constructs a Node, not an Attribute)
-        , ("text", generalize Map.empty (TArr TString (THtml TMsg)))
+        -- 3. TEXT IS ALSO POLYMORPHIC
+        -- Logic: forall a. String -> Html a
+        -- (Text is compatible with ANY message type because it produces none)
+        , ("text", Forall ["msg"] (TArr TString (THtml msgVar)))
 
-        -- EVENTS (Renamed for consistency)
-        , ("htmlOnClick", generalize Map.empty (TArr TString TAttribute))
+        -- 4. ATTRIBUTES & EVENTS
+        -- onClick is fixed to TAttribute TString for simplicity. True Elm-like message management is a goal for
+        -- later, but will require custom user-declared types and data constructors in Pura, which is still a long way as of now.
+        , ("htmlOnClick", generalize Map.empty (TArr TString (TAttribute TString)))
 
-        -- ATTRIBUTES (All prefixed with html)
-        , ("htmlClass", generalize Map.empty (TArr TString TAttribute)) 
-        , ("htmlId", generalize Map.empty (TArr TString TAttribute))
-        , ("htmlSrc", generalize Map.empty (TArr TString TAttribute))
+        , ("htmlClass",   generalize Map.empty (TArr TString (TAttribute msgVar))) 
+        , ("htmlId",      generalize Map.empty (TArr TString (TAttribute msgVar)))
+        , ("htmlSrc",     generalize Map.empty (TArr TString (TAttribute msgVar)))
         ]
 
   let stdBuiltInFuncs = Map.fromList
         [ ("toString", generalize Map.empty (TArr TInt TString))
         , ("print", generalize Map.empty (TArr (TVar "a") TUnit))
         , ("id", generalize Map.empty (TArr (TVar "b") (TVar "b")))
+        , ("prompt",   generalize Map.empty (TArr TString TString))
+        
+        -- LIST PRIMITIVES
+        -- head : List a -> a
+        , ("head", Forall ["a"] (TArr (TList (TVar "a")) (TVar "a")))
+        
+        -- tail : List a -> List a
+        , ("tail", Forall ["a"] (TArr (TList (TVar "a")) (TList (TVar "a"))))
+        
+        -- cons : a -> List a -> List a
+        , ("cons", Forall ["a"] (TArr (TVar "a") (TArr (TList (TVar "a")) (TList (TVar "a")))))
+        
+        -- isEmpty : List a -> Bool
+        , ("isEmpty", Forall ["a"] (TArr (TList (TVar "a")) TBool))
+
+        -- Helper to read an Int from String (for parsing our "State")
+        , ("parseInt", generalize Map.empty (TArr TString TInt))
         ]
         
   let initialGlobalEnv = Map.union htmlBuiltInSchemes stdBuiltInFuncs
@@ -93,7 +116,7 @@ checkProgram funcs = do
 
   -- 2nd pass: infer and unify all function definitions
   finalSchemes <- forM funcs $ \f -> do
-    (s, scheme) <- runInfer $ inferFunction fullGlobalEnv f
+    (_, scheme) <- runInfer $ inferFunction fullGlobalEnv f
     return (funcName f, scheme)
 
   let finalGlobalEnv = Map.fromList finalSchemes
