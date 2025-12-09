@@ -57,8 +57,24 @@ checkProgram funcs = do
         , ("p", generalize Map.empty elemType)
         , ("button", generalize Map.empty elemType)
         , ("h1", generalize Map.empty elemType)
+        
+        -- LAYOUT TAGS
+        , ("section", generalize Map.empty elemType)
+        , ("header", generalize Map.empty elemType)
+        , ("footer", generalize Map.empty elemType)
+        , ("ul", generalize Map.empty elemType)
+        , ("li", generalize Map.empty elemType)
+
+        -- TEXT NODE (Kept as 'text' because it constructs a Node, not an Attribute)
         , ("text", generalize Map.empty (TArr TString (THtml TMsg)))
-        , ("onClick", generalize Map.empty (TArr TString TAttribute))
+
+        -- EVENTS (Renamed for consistency)
+        , ("htmlOnClick", generalize Map.empty (TArr TString TAttribute))
+
+        -- ATTRIBUTES (All prefixed with html)
+        , ("htmlClass", generalize Map.empty (TArr TString TAttribute)) 
+        , ("htmlId", generalize Map.empty (TArr TString TAttribute))
+        , ("htmlSrc", generalize Map.empty (TArr TString TAttribute))
         ]
 
   let stdBuiltInFuncs = Map.fromList

@@ -19,7 +19,7 @@ let view = model => {
   div [] [
     h1 [] [text "Pura Counter"],
     p [] [text ("Count: " ++ (toString model))],
-    button [onClick "0"] [text "+"],
-    button [onClick "1"] [text "-"]
+    button [htmlOnClick "0"] [text "+"],
+    button [htmlOnClick "1"] [text "-"]
   ]
 }

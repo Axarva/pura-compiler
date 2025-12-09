@@ -2,6 +2,7 @@ const PuraRuntime = {
   elem: (tag) => (attrs) => (children) => ({ tag, attrs, children, key: null }),
   text: (str) => ({ tag: 'TEXT_NODE', text: String(str) }),
   on: (eventName) => (msg) => ({ type: 'event', name: eventName, msg: msg }),
+  attr: (name) => (val) => ({ type: 'attribute', name: name, value: val }),
   print: (str) => console.log(str)
 };
 
@@ -30,8 +31,9 @@ function mount(selector, program) {
     vnode.attrs.forEach(attr => {
       if (attr.type === 'event') {
         el.addEventListener(attr.name, () => dispatch(attr.msg));
+      } else if (attr.type === 'attribute') {
+        el.setAttribute(attr.name, attr.value);
       }
-      // Add other attribute types here (e.g., className)
     });
     vnode.children.forEach(child => {
       el.appendChild(renderNode(child));

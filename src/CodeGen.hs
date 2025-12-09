@@ -10,14 +10,27 @@ mapBuiltin name = case name of
   "p"      -> "PuraRuntime.elem('p')"
   "button" -> "PuraRuntime.elem('button')"
   "h1"     -> "PuraRuntime.elem('h1')"
+  "section" -> "PuraRuntime.elem('section')"
+  "header"  -> "PuraRuntime.elem('header')"
+  "footer"  -> "PuraRuntime.elem('footer')"
+  "ul"      -> "PuraRuntime.elem('ul')"
+  "li"      -> "PuraRuntime.elem('li')"
+
   -- Text Node
   "text"   -> "PuraRuntime.text"
+  
   -- Event Handlers
-  "onClick" -> "PuraRuntime.on('click')"
-  -- Utility Functions
+  "htmlOnClick" -> "PuraRuntime.on('click')"
+
+  -- Attributes
+  "htmlClass" -> "PuraRuntime.attr('class')"
+  "htmlId"    -> "PuraRuntime.attr('id')"
+  "htmlSrc"   -> "PuraRuntime.attr('src')"
+
+  -- Utility
   "toString" -> "String"
   "print"    -> "PuraRuntime.print"
-  -- Default Case: it's a user-defined variable
+  
   _        -> name
 
 
@@ -127,6 +140,7 @@ puraRuntimeJS = unlines
   , "  elem: (tag) => (attrs) => (children) => ({ tag, attrs, children, key: null }),"
   , "  text: (str) => ({ tag: 'TEXT_NODE', text: String(str) }),"
   , "  on: (eventName) => (msg) => ({ type: 'event', name: eventName, msg: msg }),"
+  , "  attr: (name) => (val) => ({ type: 'attribute', name: name, value: val }),"
   , "  print: (str) => console.log(str)"
   , "};"
   ]
@@ -151,8 +165,9 @@ mainLoopJS = unlines
   , "    vnode.attrs.forEach(attr => {"
   , "      if (attr.type === 'event') {"
   , "        el.addEventListener(attr.name, () => dispatch(attr.msg));"
+  , "      } else if (attr.type === 'attribute') {"
+  , "        el.setAttribute(attr.name, attr.value);"
   , "      }"
-  , "      // Add other attribute types here (e.g., className)"
   , "    });"
   , "    vnode.children.forEach(child => {"
   , "      el.appendChild(renderNode(child));"
