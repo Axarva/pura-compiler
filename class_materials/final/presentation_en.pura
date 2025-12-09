@@ -1,5 +1,5 @@
 -- presentation_en.pura
--- Final University Rehearsal Version (English + Separate End Slide)
+-- Final University Version (English)
 
 -- 1. MODEL --------------------------------------------------------------------
 initialModel : List String
@@ -12,7 +12,7 @@ changeSlide : List String -> Int -> List String
 let changeSlide = model => delta =>
   let currentIdx = parseInt (head model) in
   let newIdx = currentIdx + delta in
-  -- Boundary Check (Max Slide = 8)
+  -- Boundary Check (0 to 8)
   let finalIdx = 
     if newIdx < 0 then 0 
     else if newIdx > 8 then 8 
@@ -44,10 +44,12 @@ let update = msg => model =>
   else model
 
 -- 3. VIEW HELPERS -------------------------------------------------------------
+
 slideWrapper : List (Html String) -> Html String
 let slideWrapper = content => 
   div [ htmlClass "slide-container" ] [
     div [ htmlClass "slide" ] content,
+    -- Navigation Buttons
     div [ htmlClass "nav-controls" ] [
       button [ htmlOnClick "PREV", htmlClass "nav-btn" ] [ text "←" ],
       button [ htmlOnClick "NEXT", htmlClass "nav-btn" ] [ text "→" ]
@@ -58,6 +60,7 @@ fragmentClass : Bool -> String
 let fragmentClass = isVisible => 
   if isVisible then "fragment visible" else "fragment"
 
+-- Syntax Highlighting Helpers
 codeSpan : String -> String -> Html String
 let codeSpan = cls => txt => 
   div [ htmlClass ("inline-code " ++ cls) ] [ text txt ]
@@ -77,7 +80,7 @@ let line = content => div [ htmlClass "code-line" ] content
 
 -- 4. SLIDES -------------------------------------------------------------------
 
--- 0. Title
+-- Slide 0: Title
 viewTitle : Int -> Html String
 let viewTitle = idx =>
   slideWrapper [
@@ -86,32 +89,29 @@ let viewTitle = idx =>
     p [] [ text "Bridging Compiler Theory and Frontend Application." ]
   ]
 
--- 1. Problem
+-- Slide 1: The Problem (Complex JS Bug - Undefined & Coercion)
 viewProblem : Int -> Html String
 let viewProblem = idx =>
   slideWrapper [
     h1 [] [ text "Challenge: Runtime Instability" ],
-    p [ htmlClass "subtitle" ] [ text "The cognitive load of defensive coding." ],
+    p [ htmlClass "subtitle" ] [ text "Dynamic typing creates silent failures." ],
     div [ htmlClass "code-block" ] [
-      line [ kw "function", norm " processUserData(user) {" ],
-      line [ norm "  ", kw "let", norm " result ", kw "=", kw " null", norm ";" ],
-      line [ norm "  ", cmt "// Defensive nesting hell" ],
-      line [ norm "  ", kw "if", norm " (user ", kw "&&", norm " user.meta) {" ],
-      line [ norm "    ", cmt "// BUG: Assignment instead of equality" ],
-      line [ norm "    ", kw "if", norm " (user.role ", kw "=", str " 'admin'", norm ") {" ],
-      line [ norm "      ", kw "if", norm " (", kw "typeof", norm " user.score ", kw "!==", str " 'undefined'", norm ") {" ],
-      line [ norm "        result ", kw "=", norm " user.score * 2;" ],
-      line [ norm "      }" ],
-      line [ norm "    }" ],
+      line [ kw "function", norm " calculateTotal(cart) {" ],
+      line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
+      line [ norm "  ", kw "for", norm " (", kw "let", norm " item ", kw "of", norm " cart.items) {" ],
+      line [ norm "    ", cmt "// BUG 1: 'price' is a string from API (\"10\")" ],
+      line [ norm "    ", cmt "// Result is string concatenation: \"010\"" ],
+      line [ norm "    total ", kw "+=", norm " item.price;" ],
+      line [ norm "    ", cmt "// BUG 2: If item.tax is missing, it adds undefined (NaN)" ],
+      line [ norm "    total ", kw "+=", norm " item.tax;" ],
       line [ norm "  }" ],
-      line [ norm "  ", cmt "// Potential Crash: result might be null" ],
-      line [ norm "  ", kw "return", norm " result.toString();" ],
+      line [ norm "  ", kw "return", norm " total.toFixed(2); ", cmt "// Crashes if NaN" ],
       line [ norm "}" ]
     ],
-    p [ htmlClass "fragment visible" ] [ text "One typo can crash the production runtime." ]
+    p [ htmlClass "fragment visible" ] [ text "Logic errors that pass syntax checks but crash production." ]
   ]
 
--- 2. Demo
+-- Slide 2: The Demo (The Hook)
 viewTodoItem : String -> Html String
 let viewTodoItem = item =>
   li [ htmlClass "todo-item" ] [ text item ]
@@ -131,7 +131,7 @@ let viewDemo = model =>
     ]
   ]
 
--- 3. Comparison
+-- Slide 3: Comparison (Recursive Sum)
 viewComparison : Int -> Html String
 let viewComparison = idx =>
   slideWrapper [
@@ -163,7 +163,7 @@ let viewComparison = idx =>
     p [] [ text "Recursion provides mathematical correctness." ]
   ]
 
--- 4. Inference
+-- Slide 4: Inference
 viewInference : Int -> Html String
 let viewInference = idx =>
   slideWrapper [
@@ -176,7 +176,7 @@ let viewInference = idx =>
     ]
   ]
 
--- 5. Effects
+-- Slide 5: Effects
 viewEffects : Int -> Html String
 let viewEffects = idx =>
   slideWrapper [
@@ -193,7 +193,7 @@ let viewEffects = idx =>
     ]
   ]
 
--- 6. Roadmap
+-- Slide 6: Roadmap
 viewRoadmap : Int -> Html String
 let viewRoadmap = idx =>
   slideWrapper [
@@ -205,7 +205,7 @@ let viewRoadmap = idx =>
     ]
   ]
 
--- 7. Conclusion
+-- Slide 7: Conclusion
 viewConclusion : Int -> Html String
 let viewConclusion = idx =>
   slideWrapper [
@@ -214,7 +214,7 @@ let viewConclusion = idx =>
     p [ htmlClass "subtitle" ] [ text "alongside modern, interactive UI development." ]
   ]
 
--- 8. End (Separate Slide)
+-- Slide 8: Thank You
 viewEnd : Int -> Html String
 let viewEnd = idx =>
   slideWrapper [
@@ -240,5 +240,5 @@ let view = model =>
 -- 7. ENTRY POINT --------------------------------------------------------------
 main : Unit
 let main = {
-  print "Starting University Rehearsal (EN)..."
+  print "Starting University Presentation (EN)..."
 } REQUIRES ConsoleWrite, BrowserPrompt
