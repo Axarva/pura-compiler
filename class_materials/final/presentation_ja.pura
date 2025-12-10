@@ -236,7 +236,7 @@ let viewInference = idx =>
     ul [] [
       li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "型推論 + 明示的契約：内部は完全推論、境界は明示的" ],
       li [ htmlClass (fragmentClass (idx >= 2)) ] [ text "主要型 (Principal Types)：最も汎用的な型を特定" ],
-      li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "実行時エラーゼロ：型付けされたプログラムは誤作動しない" ]
+      li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "型安全：型付けされたプログラムは不正な動作をしない" ]
     ]
   ]
 
@@ -247,7 +247,7 @@ let viewEffects = idx =>
     h1 [] [ text "副作用の管理 (Effects)" ],
     p [ htmlClass "subtitle" ] [ text "外部世界へのアクセスを明示的に制御" ],
     ul [] [
-      li [ htmlClass "fragment visible" ] [ text "JavaScriptとは異なり、副作用は明示的です。" ],
+      li [ htmlClass "fragment visible" ] [ text "JavaScriptやPythonとは異なり、副作用は明示的です。" ],
       li [ htmlClass "fragment visible" ] [ text "関数は必要な「権限」を宣言しなければなりません。" ]
     ],
     div [ htmlClass "code-block" ] [
