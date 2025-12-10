@@ -162,7 +162,7 @@ let viewReveal = idx =>
             p [] [ text "Runtime Errors: 0" ]
         ],
         div [ htmlClass "repo-link-container" ] [
-            a [ htmlHref "https://github.com/Axarva/pura-compiler/tree/main/docs", htmlClass "repo-link" ] [
+            a [ htmlHref "https://github.com/Axarva/pura-compiler/tree/main/class_materials/final", htmlClass "repo-link" ] [
                 text "Check Source on GitHub" 
             ]
         ]
