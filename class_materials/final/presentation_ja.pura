@@ -1,4 +1,4 @@
--- presentation_ja.pura (Final Update with Split Reveal)
+-- presentation_ja.pura (Final Update with Transitions)
 
 -- 1. MODEL --------------------------------------------------------------------
 initialModel : List String
@@ -9,8 +9,8 @@ changeSlide : List String -> Int -> List String
 let changeSlide = model => delta =>
   let currentIdx = parseInt (head model) in
   let newIdx = currentIdx + delta in
-  -- UPDATE: Max index increased to 10 (0-10 = 11 slides)
-  let finalIdx = if newIdx < 0 then 0 else if newIdx > 10 then 10 else newIdx in
+  -- UPDATE: Max index increased to 12 for split slides
+  let finalIdx = if newIdx < 0 then 0 else if newIdx > 12 then 12 else newIdx in
   cons (toString finalIdx) (tail model)
 
 addTodo : List String -> List String
@@ -37,10 +37,24 @@ let update = msg => model =>
   else model
 
 -- 3. VIEW HELPERS -------------------------------------------------------------
+
+-- Standard Wrapper (Plays Entry Animation)
 slideWrapper : List (Html String) -> Html String
 let slideWrapper = content => 
   div [ htmlClass "slide-container" ] [
     div [ htmlClass "slide" ] content,
+    div [ htmlClass "nav-controls" ] [
+      button [ htmlOnClick "PREV", htmlClass "nav-btn" ] [ text "←" ],
+      button [ htmlOnClick "NEXT", htmlClass "nav-btn" ] [ text "→" ]
+    ]
+  ]
+
+-- Stable Wrapper (NO Animation - For Step 2 of split slides)
+slideWrapperStable : List (Html String) -> Html String
+let slideWrapperStable = content => 
+  div [ htmlClass "slide-container" ] [
+    -- Adds 'no-anim' class to prevent re-fading the left column
+    div [ htmlClass "slide no-anim" ] content,
     div [ htmlClass "nav-controls" ] [
       button [ htmlOnClick "PREV", htmlClass "nav-btn" ] [ text "←" ],
       button [ htmlOnClick "NEXT", htmlClass "nav-btn" ] [ text "→" ]
@@ -79,10 +93,13 @@ let viewTitle = idx =>
     p [] [ text "JavaScriptより読みやすく、「型」でミスを防ぐ。" ]
   ]
 
--- Slide 1: The Problem
+-- Slide 1 & 2: The Problem (Split into Steps)
 viewProblem : Int -> Html String
-let viewProblem = idx =>
-  slideWrapper [
+let viewProblem = step =>
+  -- Use Stable wrapper for Step 2 so the Left column doesn't "blink"
+  let wrapper = if step == 2 then slideWrapperStable else slideWrapper in
+  
+  wrapper [
     h1 [] [ text "課題：実行時の脆弱性" ],
     p [ htmlClass "subtitle" ] [ text "動的型付けが引き起こす静かなる失敗" ],
     div [ htmlClass "two-column" ] [
@@ -99,7 +116,8 @@ let viewProblem = idx =>
                 line [ norm "}" ]
             ]
         ],
-        div [ htmlClass (fragmentClass (idx >= 1)) ] [
+        -- Only visible in Step 2
+        div [ htmlClass (fragmentClass (step == 2)) ] [
              p [] [ text "一方、Puraで同じコードを書くと..." ],
              div [ htmlClass "code-block" ] [
                 line [ kw "let", fn " calc", norm " ", kw "=", norm " total ", kw "=>", norm " price ", kw "=>" ],
@@ -115,17 +133,17 @@ let viewProblem = idx =>
     ]
   ]
 
--- Slide 2: PRE-REVEAL (Suspense Slide)
+-- Slide 3: PRE-REVEAL
 viewPreReveal : Int -> Html String
 let viewPreReveal = idx =>
   slideWrapper [
     div [ htmlClass "center-suspense" ] [
-        h1 [ htmlClass "wait-text" ] [ text "Wait..." ],
+        h1 [ htmlClass "wait-text" ] [ text "実は..." ],
         p [ htmlClass "wait-sub" ] [ text "お気づきでしょうか？" ]
     ]
   ]
 
--- Slide 3: THE REVEAL (Punchline + Link)
+-- Slide 4: THE REVEAL
 viewReveal : Int -> Html String
 let viewReveal = idx =>
   slideWrapper [
@@ -139,13 +157,10 @@ let viewReveal = idx =>
              line [ norm "    h1 [] [ text ", str "\"このプレゼン自体が...\"", norm " ]" ],
              line [ norm "  ]" ]
         ],
-        
         div [ htmlClass "stats-container" ] [
             p [] [ text "JavaScript: 0行" ],
             p [] [ text "Runtime Errors: 0" ]
         ],
-
-        -- THE LINK
         div [ htmlClass "repo-link-container" ] [
             a [ htmlHref "https://github.com/Axarva/pura-compiler/tree/main/docs", htmlClass "repo-link" ] [
                 text "Check Source on GitHub" 
@@ -154,7 +169,7 @@ let viewReveal = idx =>
     ]
   ]
 
--- Slide 4: Demo
+-- Slide 5: Demo
 viewTodoItem : String -> Html String
 let viewTodoItem = item =>
   li [ htmlClass "todo-item" ] [ text item ]
@@ -174,10 +189,12 @@ let viewDemo = model =>
     ]
   ]
 
--- Slide 5: Comparison
+-- Slide 6 & 7: Comparison (Split into Steps)
 viewComparison : Int -> Html String
-let viewComparison = idx =>
-  slideWrapper [
+let viewComparison = step =>
+  let wrapper = if step == 2 then slideWrapperStable else slideWrapper in
+
+  wrapper [
     h1 [] [ text "比較分析" ],
     div [ htmlClass "two-column" ] [
       div [] [
@@ -192,7 +209,8 @@ let viewComparison = idx =>
           line [ norm "}" ]
         ]
       ],
-      div [] [
+      -- Only visible in Step 2
+      div [ htmlClass (fragmentClass (step == 2)) ] [
         div [ htmlClass "col-header" ] [ text "Pura (宣言型)" ],
         div [ htmlClass "code-block" ] [
           line [ kw "let", fn " sum", norm " ", kw "=", norm " list ", kw "=>" ],
@@ -203,10 +221,13 @@ let viewComparison = idx =>
         ]
       ]
     ],
-    p [] [ text "「手順」ではなく「定義」を書くことで、状態管理のバグを排除します。" ]
+    -- Conclusion text also appears in Step 2
+    div [ htmlClass (fragmentClass (step == 2)) ] [
+        p [] [ text "「手順」ではなく「定義」を書くことで、状態管理のバグを排除します。" ]
+    ]
   ]
 
--- Slide 6: Inference
+-- Slide 8: Inference
 viewInference : Int -> Html String
 let viewInference = idx =>
   slideWrapper [
@@ -219,7 +240,7 @@ let viewInference = idx =>
     ]
   ]
 
--- Slide 7: Effects
+-- Slide 9: Effects
 viewEffects : Int -> Html String
 let viewEffects = idx =>
   slideWrapper [
@@ -236,7 +257,7 @@ let viewEffects = idx =>
     ]
   ]
 
--- Slide 8: Roadmap
+-- Slide 10: Roadmap
 viewRoadmap : Int -> Html String
 let viewRoadmap = idx =>
   slideWrapper [
@@ -248,7 +269,7 @@ let viewRoadmap = idx =>
     ]
   ]
 
--- Slide 9: Conclusion
+-- Slide 11: Conclusion
 viewConclusion : Int -> Html String
 let viewConclusion = idx =>
   slideWrapper [
@@ -257,7 +278,7 @@ let viewConclusion = idx =>
     p [ htmlClass "subtitle" ] [ text "現代のインタラクティブなUI開発と共存できることを示しました。" ]
   ]
 
--- Slide 10: Thank You
+-- Slide 12: Thank You
 viewEnd : Int -> Html String
 let viewEnd = idx =>
   slideWrapper [
@@ -271,16 +292,19 @@ view : List String -> Html String
 let view = model =>
   let idx = parseInt (head model) in
   
+  -- Mapped consecutive indices to Steps (e.g., 1->Problem1, 2->Problem2)
   if idx == 0 then viewTitle idx
-  else if idx == 1 then viewProblem idx
-  else if idx == 2 then viewPreReveal idx  -- Wait...
-  else if idx == 3 then viewReveal idx     -- Pura stats + Link
-  else if idx == 4 then viewDemo model
-  else if idx == 5 then viewComparison idx
-  else if idx == 6 then viewInference 3
-  else if idx == 7 then viewEffects idx
-  else if idx == 8 then viewRoadmap idx
-  else if idx == 9 then viewConclusion idx
+  else if idx == 1 then viewProblem 1
+  else if idx == 2 then viewProblem 2
+  else if idx == 3 then viewPreReveal idx
+  else if idx == 4 then viewReveal idx
+  else if idx == 5 then viewDemo model
+  else if idx == 6 then viewComparison 1
+  else if idx == 7 then viewComparison 2
+  else if idx == 8 then viewInference 3
+  else if idx == 9 then viewEffects idx
+  else if idx == 10 then viewRoadmap idx
+  else if idx == 11 then viewConclusion idx
   else viewEnd idx
 
 -- 7. ENTRY POINT --------------------------------------------------------------

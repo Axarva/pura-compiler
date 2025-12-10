@@ -1,23 +1,16 @@
--- presentation_en.pura
--- Final University Version (English)
+-- presentation_en.pura (Final Update with Split Slides & Reveal)
 
 -- 1. MODEL --------------------------------------------------------------------
 initialModel : List String
 let initialModel = ["0", "Smile at audience"]
 
 -- 2. LOGIC & HELPERS ----------------------------------------------------------
-
--- Change slide (Bounded 0-8)
 changeSlide : List String -> Int -> List String
 let changeSlide = model => delta =>
   let currentIdx = parseInt (head model) in
   let newIdx = currentIdx + delta in
-  -- Boundary Check (0 to 8)
-  let finalIdx = 
-    if newIdx < 0 then 0 
-    else if newIdx > 8 then 8 
-    else newIdx 
-  in
+  -- Max index 12 (Total 13 states: 0 to 12)
+  let finalIdx = if newIdx < 0 then 0 else if newIdx > 12 then 12 else newIdx in
   cons (toString finalIdx) (tail model)
 
 addTodo : List String -> List String
@@ -45,11 +38,22 @@ let update = msg => model =>
 
 -- 3. VIEW HELPERS -------------------------------------------------------------
 
+-- Standard Wrapper (Animates In)
 slideWrapper : List (Html String) -> Html String
 let slideWrapper = content => 
   div [ htmlClass "slide-container" ] [
     div [ htmlClass "slide" ] content,
-    -- Navigation Buttons
+    div [ htmlClass "nav-controls" ] [
+      button [ htmlOnClick "PREV", htmlClass "nav-btn" ] [ text "←" ],
+      button [ htmlOnClick "NEXT", htmlClass "nav-btn" ] [ text "→" ]
+    ]
+  ]
+
+-- Stable Wrapper (No Animation - For Part 2 slides)
+slideWrapperStable : List (Html String) -> Html String
+let slideWrapperStable = content => 
+  div [ htmlClass "slide-container" ] [
+    div [ htmlClass "slide no-anim" ] content, -- 'no-anim' prevents re-fading
     div [ htmlClass "nav-controls" ] [
       button [ htmlOnClick "PREV", htmlClass "nav-btn" ] [ text "←" ],
       button [ htmlOnClick "NEXT", htmlClass "nav-btn" ] [ text "→" ]
@@ -60,7 +64,6 @@ fragmentClass : Bool -> String
 let fragmentClass = isVisible => 
   if isVisible then "fragment visible" else "fragment"
 
--- Syntax Highlighting Helpers
 codeSpan : String -> String -> Html String
 let codeSpan = cls => txt => 
   div [ htmlClass ("inline-code " ++ cls) ] [ text txt ]
@@ -89,29 +92,86 @@ let viewTitle = idx =>
     p [] [ text "Bridging Compiler Theory and Frontend Application." ]
   ]
 
--- Slide 1: The Problem (Complex JS Bug - Undefined & Coercion)
+-- Slide 1 & 2: The Problem (Split into Steps)
 viewProblem : Int -> Html String
-let viewProblem = idx =>
-  slideWrapper [
+let viewProblem = step =>
+  -- Use Stable wrapper for Step 2 so the Left column doesn't "blink"
+  let wrapper = if step == 2 then slideWrapperStable else slideWrapper in
+  
+  wrapper [
     h1 [] [ text "Challenge: Runtime Instability" ],
     p [ htmlClass "subtitle" ] [ text "Dynamic typing creates silent failures." ],
-    div [ htmlClass "code-block" ] [
-      line [ kw "function", norm " calculateTotal(cart) {" ],
-      line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
-      line [ norm "  ", kw "for", norm " (", kw "let", norm " item ", kw "of", norm " cart.items) {" ],
-      line [ norm "    ", cmt "// BUG 1: 'price' is a string from API (\"10\")" ],
-      line [ norm "    ", cmt "// Result is string concatenation: \"010\"" ],
-      line [ norm "    total ", kw "+=", norm " item.price;" ],
-      line [ norm "    ", cmt "// BUG 2: If item.tax is missing, it adds undefined (NaN)" ],
-      line [ norm "    total ", kw "+=", norm " item.tax;" ],
-      line [ norm "  }" ],
-      line [ norm "  ", kw "return", norm " total.toFixed(2); ", cmt "// Crashes if NaN" ],
-      line [ norm "}" ]
-    ],
-    p [ htmlClass "fragment visible" ] [ text "Logic errors that pass syntax checks but crash production." ]
+    div [ htmlClass "two-column" ] [
+        div [] [
+            p [] [ text "JavaScript (Runtime Error)" ],
+            div [ htmlClass "code-block" ] [
+                line [ kw "function", norm " calc(cart) {" ],
+                line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
+                line [ norm "  ", kw "for", norm " (", kw "let", norm " item ", kw "of", norm " cart.items) {" ],
+                line [ norm "    ", cmt "// BUG: \"10\" + 0 = \"010\"" ],
+                line [ norm "    total ", kw "+=", norm " item.price;" ],
+                line [ norm "  }" ],
+                line [ norm "  ", kw "return", norm " total;" ],
+                line [ norm "}" ]
+            ]
+        ],
+        -- Only visible in Step 2
+        div [ htmlClass (fragmentClass (step == 2)) ] [
+             p [] [ text "Meanwhile, in Pura..." ],
+             div [ htmlClass "code-block" ] [
+                line [ kw "let", fn " calc", norm " ", kw "=", norm " total ", kw "=>", norm " price ", kw "=>" ],
+                line [ norm "  total ", kw "+", norm " price" ]
+             ],
+             div [ htmlClass "error-box" ] [
+                div [ htmlClass "error-title" ] [ text "🛑 Type Mismatch Error" ],
+                div [ htmlClass "error-msg" ] [ text "Cannot add types Int and String." ],
+                div [ htmlClass "error-detail" ] [ text "  | total + price" ],
+                div [ htmlClass "error-detail" ] [ text "  |         ^^^^^ Expected Int, got String" ]
+             ]
+        ]
+    ]
   ]
 
--- Slide 2: The Demo (The Hook)
+-- Slide 3: PRE-REVEAL (Suspense Slide)
+viewPreReveal : Int -> Html String
+let viewPreReveal = idx =>
+  slideWrapper [
+    div [ htmlClass "center-suspense" ] [
+        h1 [ htmlClass "wait-text" ] [ text "Actually..." ],
+        p [ htmlClass "wait-sub" ] [ text "Did you notice?" ]
+    ]
+  ]
+
+-- Slide 4: THE REVEAL (Punchline + Link)
+viewReveal : Int -> Html String
+let viewReveal = idx =>
+  slideWrapper [
+    div [ htmlClass "fragment visible" ] [
+        h1 [ htmlClass "title reveal-title" ] [ text "This presentation is built with Pura." ],
+        p [] [ text "It is an application with state management using the MVU architecture." ],
+        div [ htmlClass "code-block reveal-code" ] [
+             line [ norm " " ],
+             line [ kw "let", fn " viewReveal", norm " ", kw "=", norm " idx ", kw "=>" ],
+             line [ norm "  slideWrapper [" ],
+             line [ norm "    h1 [] [ text ", str "\"This presentation...\"", norm " ]" ],
+             line [ norm "  ]" ]
+        ],
+        
+        div [ htmlClass "stats-container" ] [
+            p [] [ text "JavaScript: 0 lines" ],
+            p [] [ text "Runtime Errors: 0" ]
+        ],
+
+        -- THE LINK
+        div [ htmlClass "repo-link-container" ] [
+            a [ htmlHref "https://github.com/Axarva/pura-compiler/tree/main/docs", htmlClass "repo-link" ] [
+                text "Check Source on GitHub" 
+            ]
+        ]
+    ]
+  ]
+
+-- Slide 5: Demo
 viewTodoItem : String -> Html String
 let viewTodoItem = item =>
   li [ htmlClass "todo-item" ] [ text item ]
@@ -131,10 +191,12 @@ let viewDemo = model =>
     ]
   ]
 
--- Slide 3: Comparison (Recursive Sum)
+-- Slide 6 & 7: Comparison (Split into Steps)
 viewComparison : Int -> Html String
-let viewComparison = idx =>
-  slideWrapper [
+let viewComparison = step =>
+  let wrapper = if step == 2 then slideWrapperStable else slideWrapper in
+
+  wrapper [
     h1 [] [ text "Comparative Analysis" ],
     div [ htmlClass "two-column" ] [
       div [] [
@@ -149,7 +211,8 @@ let viewComparison = idx =>
           line [ norm "}" ]
         ]
       ],
-      div [] [
+      -- Only visible in Step 2
+      div [ htmlClass (fragmentClass (step == 2)) ] [
         div [ htmlClass "col-header" ] [ text "Pura (Declarative)" ],
         div [ htmlClass "code-block" ] [
           line [ kw "let", fn " sum", norm " ", kw "=", norm " list ", kw "=>" ],
@@ -160,23 +223,26 @@ let viewComparison = idx =>
         ]
       ]
     ],
-    p [] [ text "Recursion provides mathematical correctness." ]
+    -- Conclusion text also appears in Step 2
+    div [ htmlClass (fragmentClass (step == 2)) ] [
+        p [] [ text "By writing 'definitions' instead of 'steps', we eliminate state management bugs." ]
+    ]
   ]
 
--- Slide 4: Inference
+-- Slide 8: Inference
 viewInference : Int -> Html String
 let viewInference = idx =>
   slideWrapper [
     h1 [] [ text "Hindley-Milner Inference" ],
     p [ htmlClass "subtitle" ] [ text "Compile-time correctness guarantees." ],
     ul [] [
-      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "Algorithm W: Deduces types without annotations." ],
+      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "Inference + Contracts: Internals fully inferred, boundaries explicit." ],
       li [ htmlClass (fragmentClass (idx >= 2)) ] [ text "Principal Types: Finds the most general type possible." ],
       li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "Zero Runtime Errors: Well-typed programs cannot go wrong." ]
     ]
   ]
 
--- Slide 5: Effects
+-- Slide 9: Effects
 viewEffects : Int -> Html String
 let viewEffects = idx =>
   slideWrapper [
@@ -193,7 +259,7 @@ let viewEffects = idx =>
     ]
   ]
 
--- Slide 6: Roadmap
+-- Slide 10: Roadmap
 viewRoadmap : Int -> Html String
 let viewRoadmap = idx =>
   slideWrapper [
@@ -205,7 +271,7 @@ let viewRoadmap = idx =>
     ]
   ]
 
--- Slide 7: Conclusion
+-- Slide 11: Conclusion
 viewConclusion : Int -> Html String
 let viewConclusion = idx =>
   slideWrapper [
@@ -214,7 +280,7 @@ let viewConclusion = idx =>
     p [ htmlClass "subtitle" ] [ text "alongside modern, interactive UI development." ]
   ]
 
--- Slide 8: Thank You
+-- Slide 12: Thank You
 viewEnd : Int -> Html String
 let viewEnd = idx =>
   slideWrapper [
@@ -227,14 +293,19 @@ view : List String -> Html String
 let view = model =>
   let idx = parseInt (head model) in
   
+  -- Mapped consecutive indices to Steps (e.g., 1->Problem1, 2->Problem2)
   if idx == 0 then viewTitle idx
-  else if idx == 1 then viewProblem idx
-  else if idx == 2 then viewDemo model
-  else if idx == 3 then viewComparison idx
-  else if idx == 4 then viewInference 3
-  else if idx == 5 then viewEffects idx
-  else if idx == 6 then viewRoadmap idx
-  else if idx == 7 then viewConclusion idx
+  else if idx == 1 then viewProblem 1    -- Step 1
+  else if idx == 2 then viewProblem 2    -- Step 2
+  else if idx == 3 then viewPreReveal idx
+  else if idx == 4 then viewReveal idx
+  else if idx == 5 then viewDemo model
+  else if idx == 6 then viewComparison 1   -- Step 1
+  else if idx == 7 then viewComparison 2   -- Step 2
+  else if idx == 8 then viewInference 3
+  else if idx == 9 then viewEffects idx
+  else if idx == 10 then viewRoadmap idx
+  else if idx == 11 then viewConclusion idx
   else viewEnd idx
 
 -- 7. ENTRY POINT --------------------------------------------------------------
