@@ -1,16 +1,16 @@
--- presentation_ja.pura (Final Update)
+-- presentation_ja.pura (Final Update with Split Reveal)
 
 -- 1. MODEL --------------------------------------------------------------------
 initialModel : List String
 let initialModel = ["0", "微積試験勉強！！"]
 
 -- 2. LOGIC & HELPERS ----------------------------------------------------------
--- (Logic same as English version)
 changeSlide : List String -> Int -> List String
 let changeSlide = model => delta =>
   let currentIdx = parseInt (head model) in
   let newIdx = currentIdx + delta in
-  let finalIdx = if newIdx < 0 then 0 else if newIdx > 8 then 8 else newIdx in
+  -- UPDATE: Max index increased to 10 (0-10 = 11 slides)
+  let finalIdx = if newIdx < 0 then 0 else if newIdx > 10 then 10 else newIdx in
   cons (toString finalIdx) (tail model)
 
 addTodo : List String -> List String
@@ -51,7 +51,6 @@ fragmentClass : Bool -> String
 let fragmentClass = isVisible => 
   if isVisible then "fragment visible" else "fragment"
 
--- Syntax Highlighting Helpers (Same as English)
 codeSpan : String -> String -> Html String
 let codeSpan = cls => txt => 
   div [ htmlClass ("inline-code " ++ cls) ] [ text txt ]
@@ -80,29 +79,82 @@ let viewTitle = idx =>
     p [] [ text "JavaScriptより読みやすく、「型」でミスを防ぐ。" ]
   ]
 
--- Slide 1: The Problem (Coercion/NaN Bug)
+-- Slide 1: The Problem
 viewProblem : Int -> Html String
 let viewProblem = idx =>
   slideWrapper [
     h1 [] [ text "課題：実行時の脆弱性" ],
     p [ htmlClass "subtitle" ] [ text "動的型付けが引き起こす静かなる失敗" ],
-    div [ htmlClass "code-block" ] [
-      line [ kw "function", norm " calculateTotal(cart) {" ],
-      line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
-      line [ norm "  ", kw "for", norm " (", kw "let", norm " item ", kw "of", norm " cart.items) {" ],
-      line [ norm "    ", cmt "// バグ1: APIからの値が文字列 \"10\" の場合" ],
-      line [ norm "    ", cmt "// 加算ではなく文字列連結になる: \"010\"" ],
-      line [ norm "    total ", kw "+=", norm " item.price;" ],
-      line [ norm "    ", cmt "// バグ2: taxが未定義(undefined)だとNaNになる" ],
-      line [ norm "    total ", kw "+=", norm " item.tax;" ],
-      line [ norm "  }" ],
-      line [ norm "  ", kw "return", norm " total.toFixed(2); ", cmt "// NaNならクラッシュ" ],
-      line [ norm "}" ]
-    ],
-    p [ htmlClass "fragment visible" ] [ text "文法的に正しくても、本番環境でクラッシュします。" ]
+    div [ htmlClass "two-column" ] [
+        div [] [
+            p [] [ text "JavaScriptの場合 (実行時エラー)" ],
+            div [ htmlClass "code-block" ] [
+                line [ kw "function", norm " calc(cart) {" ],
+                line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
+                line [ norm "  ", kw "for", norm " (", kw "let", norm " item ", kw "of", norm " cart.items) {" ],
+                line [ norm "    ", cmt "// バグ: \"10\" + 0 = \"010\"" ],
+                line [ norm "    total ", kw "+=", norm " item.price;" ],
+                line [ norm "  }" ],
+                line [ norm "  ", kw "return", norm " total;" ],
+                line [ norm "}" ]
+            ]
+        ],
+        div [ htmlClass (fragmentClass (idx >= 1)) ] [
+             p [] [ text "一方、Puraで同じコードを書くと..." ],
+             div [ htmlClass "code-block" ] [
+                line [ kw "let", fn " calc", norm " ", kw "=", norm " total ", kw "=>", norm " price ", kw "=>" ],
+                line [ norm "  total ", kw "+", norm " price" ]
+             ],
+             div [ htmlClass "error-box" ] [
+                div [ htmlClass "error-title" ] [ text "🛑 Type Mismatch Error" ],
+                div [ htmlClass "error-msg" ] [ text "Cannot add types Int and String." ],
+                div [ htmlClass "error-detail" ] [ text "  | total + price" ],
+                div [ htmlClass "error-detail" ] [ text "  |         ^^^^^ Expected Int, got String" ]
+             ]
+        ]
+    ]
   ]
 
--- Slide 2: Demo
+-- Slide 2: PRE-REVEAL (Suspense Slide)
+viewPreReveal : Int -> Html String
+let viewPreReveal = idx =>
+  slideWrapper [
+    div [ htmlClass "center-suspense" ] [
+        h1 [ htmlClass "wait-text" ] [ text "Wait..." ],
+        p [ htmlClass "wait-sub" ] [ text "お気づきでしょうか？" ]
+    ]
+  ]
+
+-- Slide 3: THE REVEAL (Punchline + Link)
+viewReveal : Int -> Html String
+let viewReveal = idx =>
+  slideWrapper [
+    div [ htmlClass "fragment visible" ] [
+        h1 [ htmlClass "title reveal-title" ] [ text "このプレゼン自体が Pura製 です。" ],
+        p [] [ text "MVU アーキテクチャを使った状態管理機能付きアプリです。" ],
+        div [ htmlClass "code-block reveal-code" ] [
+             line [ norm " " ],
+             line [ kw "let", fn " viewReveal", norm " ", kw "=", norm " idx ", kw "=>" ],
+             line [ norm "  slideWrapper [" ],
+             line [ norm "    h1 [] [ text ", str "\"このプレゼン自体が...\"", norm " ]" ],
+             line [ norm "  ]" ]
+        ],
+        
+        div [ htmlClass "stats-container" ] [
+            p [] [ text "JavaScript: 0行" ],
+            p [] [ text "Runtime Errors: 0" ]
+        ],
+
+        -- THE LINK
+        div [ htmlClass "repo-link-container" ] [
+            a [ htmlHref "https://github.com/Axarva/pura-compiler/tree/main/docs", htmlClass "repo-link" ] [
+                text "Check Source on GitHub" 
+            ]
+        ]
+    ]
+  ]
+
+-- Slide 4: Demo
 viewTodoItem : String -> Html String
 let viewTodoItem = item =>
   li [ htmlClass "todo-item" ] [ text item ]
@@ -122,7 +174,7 @@ let viewDemo = model =>
     ]
   ]
 
--- Slide 3: Comparison
+-- Slide 5: Comparison
 viewComparison : Int -> Html String
 let viewComparison = idx =>
   slideWrapper [
@@ -151,23 +203,23 @@ let viewComparison = idx =>
         ]
       ]
     ],
-    p [] [ text "再帰を用いることで、数学的な正しさが保証されます。" ]
+    p [] [ text "「手順」ではなく「定義」を書くことで、状態管理のバグを排除します。" ]
   ]
 
--- Slide 4: Inference
+-- Slide 6: Inference
 viewInference : Int -> Html String
 let viewInference = idx =>
   slideWrapper [
     h1 [] [ text "Hindley-Milner 型推論" ],
     p [ htmlClass "subtitle" ] [ text "コンパイル時における正当性の保証" ],
     ul [] [
-      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "Algorithm W：型注釈なしで型を導出" ],
+      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "型推論 + 明示的契約：内部は完全推論、境界は明示的" ],
       li [ htmlClass (fragmentClass (idx >= 2)) ] [ text "主要型 (Principal Types)：最も汎用的な型を特定" ],
       li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "実行時エラーゼロ：型付けされたプログラムは誤作動しない" ]
     ]
   ]
 
--- Slide 5: Effects
+-- Slide 7: Effects
 viewEffects : Int -> Html String
 let viewEffects = idx =>
   slideWrapper [
@@ -184,7 +236,7 @@ let viewEffects = idx =>
     ]
   ]
 
--- Slide 6: Roadmap
+-- Slide 8: Roadmap
 viewRoadmap : Int -> Html String
 let viewRoadmap = idx =>
   slideWrapper [
@@ -196,7 +248,7 @@ let viewRoadmap = idx =>
     ]
   ]
 
--- Slide 7: Conclusion
+-- Slide 9: Conclusion
 viewConclusion : Int -> Html String
 let viewConclusion = idx =>
   slideWrapper [
@@ -205,7 +257,7 @@ let viewConclusion = idx =>
     p [ htmlClass "subtitle" ] [ text "現代のインタラクティブなUI開発と共存できることを示しました。" ]
   ]
 
--- Slide 8: Thank You
+-- Slide 10: Thank You
 viewEnd : Int -> Html String
 let viewEnd = idx =>
   slideWrapper [
@@ -221,12 +273,14 @@ let view = model =>
   
   if idx == 0 then viewTitle idx
   else if idx == 1 then viewProblem idx
-  else if idx == 2 then viewDemo model
-  else if idx == 3 then viewComparison idx
-  else if idx == 4 then viewInference 3
-  else if idx == 5 then viewEffects idx
-  else if idx == 6 then viewRoadmap idx
-  else if idx == 7 then viewConclusion idx
+  else if idx == 2 then viewPreReveal idx  -- Wait...
+  else if idx == 3 then viewReveal idx     -- Pura stats + Link
+  else if idx == 4 then viewDemo model
+  else if idx == 5 then viewComparison idx
+  else if idx == 6 then viewInference 3
+  else if idx == 7 then viewEffects idx
+  else if idx == 8 then viewRoadmap idx
+  else if idx == 9 then viewConclusion idx
   else viewEnd idx
 
 -- 7. ENTRY POINT --------------------------------------------------------------

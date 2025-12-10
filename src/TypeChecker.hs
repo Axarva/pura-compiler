@@ -60,6 +60,7 @@ checkProgram funcs = do
         , ("p",      Forall ["msg"] elemType)
         , ("button", Forall ["msg"] elemType)
         , ("h1",     Forall ["msg"] elemType)
+        , ("a",      Forall ["msg"] elemType)
         
         -- Layout Tags
         , ("section", Forall ["msg"] elemType)
@@ -81,6 +82,7 @@ checkProgram funcs = do
         , ("htmlClass",   generalize Map.empty (TArr TString (TAttribute msgVar))) 
         , ("htmlId",      generalize Map.empty (TArr TString (TAttribute msgVar)))
         , ("htmlSrc",     generalize Map.empty (TArr TString (TAttribute msgVar)))
+        , ("htmlHref",    generalize Map.empty (TArr TString (TAttribute msgVar)))
         ]
 
   let stdBuiltInFuncs = Map.fromList

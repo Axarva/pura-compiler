@@ -322,7 +322,6 @@ isBinOpToken tok = case L.tokType tok of
 parseAtom :: Parser Expr
 parseAtom =
       parseStringLiteral
-  <|> try parseLetExpr
   <|> parseBoolLiteral
   <|> parseIntLiteral
   <|> try (do
@@ -333,6 +332,7 @@ parseAtom =
   <|> try parseBlock
   <|> try parseListLiteral
   <|> try (do v <- parseVariable; notFollowedBy (matchTok L.TokColon); return v)
+  <|> try parseLetExpr
   <|> parseDoBlock
   <|> (do
           _ <- matchTok L.TokLParen

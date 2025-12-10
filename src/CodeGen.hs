@@ -15,6 +15,7 @@ mapBuiltin name = case name of
   "footer"  -> "PuraRuntime.elem('footer')"
   "ul"      -> "PuraRuntime.elem('ul')"
   "li"      -> "PuraRuntime.elem('li')"
+  "a"        -> "PuraRuntime.elem('a')"
 
   -- Text Node
   "text"   -> "PuraRuntime.text"
@@ -26,6 +27,7 @@ mapBuiltin name = case name of
   "htmlClass" -> "PuraRuntime.attr('class')"
   "htmlId"    -> "PuraRuntime.attr('id')"
   "htmlSrc"   -> "PuraRuntime.attr('src')"
+  "htmlHref" -> "PuraRuntime.attr('href')"
 
   -- Utility
   "toString" -> "String"
