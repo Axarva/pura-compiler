@@ -41,7 +41,7 @@ mapBuiltin name = case name of
   -- PARSING
   "parseInt" -> "parseInt"
   -- BROWSER PROMPT
-  "prompt"   -> "window.prompt"
+  "prompt"   -> "((msg) => { let r = window.prompt(msg); return r === null ? \"\" : r; })"
   _        -> name
 
 escapeJSString :: String -> String

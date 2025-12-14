@@ -9,13 +9,13 @@
     --text-secondary: #666;
     --accent: #2563eb;
     
-    /* Code Theme */
     --code-bg: #282a36;
     --code-fg: #f8f8f2;
     --code-kw: #ff79c6;
     --code-str: #f1fa8c;
     --code-fn: #8be9fd;
     --code-comment: #6272a4;
+    --code-red: #ff2600;
 }
 
 body {
@@ -28,7 +28,8 @@ body {
     background-size: 40px 40px;
     height: 100vh;
     width: 100vw;
-    overflow: hidden;
+    /* Prevent body scroll to maintain app feel */
+    overflow: hidden; 
 }
 
 /* --- UTILS --- */
@@ -38,7 +39,15 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* Default to center for desktop */
+    justify-content: center; 
+    
+    /* Allow scrolling within the container if content overflows */
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch;
+    
+    /* Box sizing to handle padding correctly */
+    box-sizing: border-box;
 }
 
 .slide {
@@ -46,6 +55,8 @@ body {
     max-width: 1400px;
     text-align: center;
     animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Ensure margins don't collapse */
+    display: flow-root; 
 }
 
 /* --- TYPOGRAPHY --- */
@@ -57,20 +68,32 @@ h1 {
     color: #111;
 }
 
-h1.title {
+/* BIG Title for First Slide */
+.main-title {
+    font-size: clamp(5rem, 8vw, 10rem) !important;
     background: linear-gradient(135deg, #111 0%, var(--accent) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+.main-subtitle {
+    font-weight: 600;
+}
+
+h1.title {
+    color: #111;
 }
 
 .subtitle {
-    font-size: clamp(1.2rem, 2vw, 2rem);
+    font-size: clamp(1.5rem, 2.5vw, 2.5rem);
     color: var(--text-secondary);
     margin-bottom: 3rem;
 }
 
+/* 125% Scale for body text */
 p, li {
-    font-size: clamp(1.1rem, 1.5vw, 1.6rem);
+    font-size: clamp(1.4rem, 1.9vw, 2.2rem);
     line-height: 1.6;
 }
 
@@ -97,20 +120,19 @@ li::before {
 .code-block {
     background: var(--code-bg);
     color: var(--code-fg);
-    padding: 2rem;
+    padding: 2.5rem;
     border-radius: 12px;
     font-family: var(--font-code);
     text-align: left;
-    font-size: clamp(0.9rem, 1.1vw, 1.3rem);
+    /* 125% Scale for code */
+    font-size: clamp(1.1rem, 1.5vw, 1.8rem);
     box-shadow: 0 20px 50px rgba(0,0,0,0.2);
     flex-grow: 1;
-    /* margin: 2rem auto; */
     margin: 0;
     position: relative;
     border: 1px solid #444;
 }
 
-/* Fake Window Controls */
 .code-block::before {
     content: "● ● ●"; 
     position: absolute;
@@ -124,21 +146,15 @@ li::before {
     -webkit-text-fill-color: transparent;
 }
 
-/* Since we use DIVs for code tokens, we must force them inline */
-.code-line {
-    display: block; /* Each line is a block */
-    min-height: 1.5em; /* Ensure empty lines have height */
-}
-
-.inline-code {
-    display: inline-block;
-    white-space: pre;
-}
+.code-line { display: block; min-height: 1.5em; }
+.inline-code { display: inline-block; white-space: pre; }
 
 .kw { color: var(--code-kw); font-weight: bold; }
 .str { color: var(--code-str); }
 .fn { color: var(--code-fn); }
 .cmt { color: var(--code-comment); font-style: italic; }
+.cmt-red { color: var(--code-red); font-style: italic; }
+.norm { color: var(--code-fg); }
 
 /* --- GRID --- */
 .two-column {
@@ -158,9 +174,51 @@ li::before {
     font-weight: bold;
     color: var(--accent);
     margin-bottom: 0.5rem;
+    font-size: 1.4rem; /* Scaled */
 }
 
-/* --- TODO DEMO --- */
+/* Centered Header Helper */
+.center-text {
+    text-align: center;
+}
+
+/* --- EFFECTS GRID --- */
+.effects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    width: 100%;
+    margin-top: 2rem;
+}
+
+.effect-card {
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.5s;
+}
+
+/* Center headers in the grid */
+.effect-card .col-header {
+    text-align: center;
+}
+
+.small-code {
+    padding: 1.5rem;
+    /* Slightly smaller than main code blocks to fit 4 on screen */
+    font-size: clamp(1rem, 1.3vw, 1.5rem); 
+}
+
+/* --- TITLE INFO --- */
+.title-info {
+    margin-top: 3rem;
+}
+.title-info p {
+    font-size: clamp(1rem, 2.5vw, 2rem);
+    color: #555;
+    margin: 0.5rem 0;
+}
+
+/* --- DEMO --- */
 .todo-container {
     background: white;
     border-radius: 12px;
@@ -186,36 +244,103 @@ button {
     cursor: pointer;
     margin: 0.5rem;
     transition: transform 0.1s;
+    font-size: 1.1rem;
 }
 button:hover { transform: translateY(-2px); }
 .btn-primary { background: var(--accent); color: white; }
 .btn-secondary { background: #f3f4f6; color: #444; }
 
-/* --- ANIMATION --- */
-.fragment { opacity: 0; transform: translateY(20px); transition: 0.5s; }
-.fragment.visible { opacity: 1; transform: translateY(0); }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: 0; } }
-
-.footer {
-    position: fixed;
-    bottom: 10px;
-    width: 100%;
-    text-align: center;
-    font-size: 0.8rem;
-    color: #aaa;
+/* --- REVEAL SLIDES --- */
+.center-suspense {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
 }
-/* --- NAVIGATION CONTROLS --- */
+.wait-text {
+    /* SCALED for mobile to prevent overflow */
+    font-size: clamp(3rem, 10vw, 5rem);
+    color: #333;
+    font-weight: 900;
+    margin-bottom: 1rem;
+    letter-spacing: -2px;
+}
+.wait-sub {
+    font-size: 1.5rem;
+    color: #888;
+    font-weight: 400;
+}
+.reveal-title {
+    font-size: clamp(2.5rem, 4.5vw, 4rem) !important;
+    margin-bottom: 0.5rem !important;
+    background: linear-gradient(135deg, #111 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.reveal-code {
+    margin-top: 0 !important;
+    margin-bottom: 1.5rem !important;
+    padding: 1.5rem !important;
+}
+.stats-container p {
+    margin: 0.2rem 0;
+    font-family: var(--font-code);
+    font-size: 1.1rem;
+    color: var(--accent);
+    font-weight: bold;
+}
+.repo-link-container { margin-top: 2rem; }
+.repo-link {
+    display: inline-block;
+    text-decoration: none;
+    background-color: #24292e;
+    color: white;
+    font-family: var(--font-main);
+    font-weight: 600;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: transform 0.2s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.repo-link:hover { transform: translateY(-3px); }
+
+/* --- ERROR BOX --- */
+.error-box {
+    background: #2b1d1d;
+    border: 1px solid #ff4444;
+    border-radius: 8px;
+    padding: 1.5rem;
+    font-family: var(--font-code);
+    text-align: left;
+    margin-top: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border-left: 5px solid #ff4444;
+}
+.error-title {
+    color: #ff4444;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.error-msg { color: #fff; font-size: 1.1rem; margin-bottom: 1rem; }
+.error-detail { color: #aaa; font-size: 1rem; white-space: pre; line-height: 1.4; }
+
+/* --- NAVIGATION --- */
 .nav-controls {
     position: fixed;
     bottom: 20px;
     right: 20px;
     display: flex;
     gap: 10px;
-    z-index: 1000; /* Ensure it stays on top */
+    z-index: 1000;
 }
-
 .nav-btn {
-    background: rgba(0, 0, 0, 0.05); /* Subtle look */
+    background: rgba(0, 0, 0, 0.05);
     color: #333;
     font-size: 1.2rem;
     padding: 10px 15px;
@@ -227,137 +352,106 @@ button:hover { transform: translateY(-2px); }
     justify-content: center;
     transition: all 0.2s ease;
 }
-
 .nav-btn:hover {
     background: var(--accent);
     color: white;
     transform: scale(1.1);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
-/* --- ERROR SIMULATION (New!) --- */
-.error-box {
-    background: #2b1d1d; /* Dark reddish terminal bg */
-    border: 1px solid #ff4444;
-    border-radius: 8px;
-    padding: 1.5rem;
-    font-family: var(--font-code);
-    text-align: left;
-    margin-top: 1.5rem;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    border-left: 5px solid #ff4444;
+.copyright {
+    font-size: 12px;
+    color: #888888;
+    text-align: center;
+    padding: 10px 0;
+    font-family: Arial, sans-serif;
+    line-height: 1.5;
+    opacity: 0.8;
 }
 
-.error-title {
-    color: #ff4444;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
+/* --- ANIMATION HELPERS --- */
+.slide.no-anim { animation: none; }
+.hidden-block { visibility: hidden; opacity: 0; }
+.fragment { opacity: 0; transform: translateY(20px); transition: 0.5s; }
+.fragment.visible { opacity: 1; transform: translateY(0); animation: fadeIn 0.8s ease-out; }
+.visible { opacity: 1; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: 0; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.error-msg {
-    color: #fff;
-    font-size: 1rem;
-    margin-bottom: 1rem;
-}
+/* --- MOBILE RESPONSIVENESS (UPDATED) --- */
+@media (max-width: 768px) {
+    /* 1. LAYOUT STACKING & ALIGNMENT */
+    .two-column, .effects-grid {
+        grid-template-columns: 1fr; 
+        gap: 2rem;
+        /* NEW: Center content in stacked columns so ULs are centered */
+        text-align: center; 
+    }
+    
+    /* 2. TEXT SIZE ADJUSTMENTS */
+    h1 { font-size: 2.2rem; }
+    p, li { font-size: 1.1rem; }
+    .subtitle { font-size: 1.2rem; margin-bottom: 1.5rem; }
+    
+    .two-column ul {
+        padding: revert;
+    }
+    /* 3. SCROLLING & SPACING */
+    .slide-container {
+        justify-content: flex-start; 
+        padding-top: 80px; 
+        padding-bottom: 120px; 
+    }
+    
+    .slide {
+        width: 95%;
+        padding: 0 10px;
+        margin-bottom: 0; 
+    }
+    
+    /* 4. CODE BLOCK & ERROR BOX FIXES */
+    .inline-code {
+        white-space: pre-wrap; 
+        word-break: break-word; 
+    }
+    
+    .code-block { 
+        font-size: 0.85rem; 
+        padding: 3rem 1rem; 
+        width: 100%; 
+        box-sizing: border-box;
+        /* Keep code blocks left-aligned internally even if parent is centered */
+        text-align: left; 
+    }
+    
+    .small-code { font-size: 0.8rem; }
 
-.error-detail {
-    color: #aaa;
-    font-size: 0.9rem;
-    white-space: pre;
-    line-height: 1.4;
-}
-/* --- PRE-REVEAL (Wait...) --- */
-.center-suspense {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 60vh; /* Vertically center in the slide area */
-}
-
-.wait-text {
-    font-size: 5rem;
-    color: #333;
-    font-weight: 900;
-    margin-bottom: 1rem;
-    letter-spacing: -2px;
-}
-
-.wait-sub {
-    font-size: 1.5rem;
-    color: #888;
-    font-weight: 400;
-}
-
-/* --- REVEAL UPDATES --- */
-.reveal-title {
-    font-size: clamp(2.5rem, 4.5vw, 4rem) !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.reveal-code {
-    margin-top: 0 !important;
-    margin-bottom: 1.5rem !important;
-    padding: 1.5rem !important;
-}
-
-.stats-container p {
-    margin: 0.2rem 0;
-    font-family: var(--font-code);
-    font-size: 0.9rem;
-    color: var(--accent);
-    font-weight: bold;
-}
-
-/* --- REPO LINK --- */
-.repo-link-container {
-    margin-top: 2rem;
-}
-
-.repo-link {
-    display: inline-block;
-    text-decoration: none;
-    background-color: #24292e; /* GitHub Black */
-    color: white;
-    font-family: var(--font-main);
-    font-weight: 600;
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: transform 0.2s, background-color 0.2s;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.repo-link:hover {
-    transform: translateY(-3px);
-    background-color: #444;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-}
-
-/* --- TRANSITION CONTROLS --- */
-
-/* When switching from Step 1 -> Step 2, we don't want the 
-   whole slide to fly up again. This locks it in place.
-*/
-.slide.no-anim {
-    animation: none;
-}
-
-/* Ensure the new content (Step 2) still fades in 
-   even if the parent slide doesn't animate.
-*/
-.fragment.visible {
-    opacity: 1;
-    transform: translateY(0);
-    /* Explicitly animate opacity for the "reveal" effect */
-    animation: fadeIn 0.8s ease-out; 
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    /* NEW: Shrink Error Box on Mobile */
+    .error-box {
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    .error-title { font-size: 1rem; }
+    .error-msg { font-size: 0.95rem; }
+    .error-detail { font-size: 0.85rem; }
+    
+    /* 5. NAVIGATION BAR */
+    .nav-controls { 
+        bottom: 0; 
+        right: 0;
+        width: 100%;
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(8px);
+        padding: 15px 0;
+        justify-content: space-evenly;
+        border-top: 1px solid #eee;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .nav-btn { 
+        width: auto; 
+        flex-grow: 1; 
+        max-width: 120px;
+        height: 45px;
+        border-radius: 8px;
+    }
 }

@@ -1,22 +1,22 @@
--- presentation_en.pura (Final Update with Split Slides & Reveal)
+-- presentation_en.pura (English Translation)
 
 -- 1. MODEL --------------------------------------------------------------------
 initialModel : List String
-let initialModel = ["0", "Smile at audience"]
+let initialModel = ["0", "Study for Calculus Exam!!"]
 
 -- 2. LOGIC & HELPERS ----------------------------------------------------------
 changeSlide : List String -> Int -> List String
 let changeSlide = model => delta =>
   let currentIdx = parseInt (head model) in
   let newIdx = currentIdx + delta in
-  -- Max index 12 (Total 13 states: 0 to 12)
   let finalIdx = if newIdx < 0 then 0 else if newIdx > 12 then 12 else newIdx in
   cons (toString finalIdx) (tail model)
 
 addTodo : List String -> List String
 let addTodo = model =>
-  let input = prompt "Enter Task Name:" in
-  cons (head model) (cons input (tail model)) REQUIRES BrowserPrompt
+  let input = prompt "New Task Name:" in
+  if input == "" then model 
+  else cons (head model) (cons input (tail model)) REQUIRES BrowserPrompt
 
 removeTop : List String -> List String
 let removeTop = model =>
@@ -38,7 +38,6 @@ let update = msg => model =>
 
 -- 3. VIEW HELPERS -------------------------------------------------------------
 
--- Standard Wrapper (Animates In)
 slideWrapper : List (Html String) -> Html String
 let slideWrapper = content => 
   div [ htmlClass "slide-container" ] [
@@ -49,11 +48,10 @@ let slideWrapper = content =>
     ]
   ]
 
--- Stable Wrapper (No Animation - For Part 2 slides)
 slideWrapperStable : List (Html String) -> Html String
 let slideWrapperStable = content => 
   div [ htmlClass "slide-container" ] [
-    div [ htmlClass "slide no-anim" ] content, -- 'no-anim' prevents re-fading
+    div [ htmlClass "slide no-anim" ] content,
     div [ htmlClass "nav-controls" ] [
       button [ htmlOnClick "PREV", htmlClass "nav-btn" ] [ text "←" ],
       button [ htmlOnClick "NEXT", htmlClass "nav-btn" ] [ text "→" ]
@@ -76,6 +74,8 @@ fn : String -> Html String
 let fn = t => codeSpan "fn" t
 cmt : String -> Html String
 let cmt = t => codeSpan "cmt" t
+redCmt : String -> Html String
+let redCmt = t => codeSpan "cmt-red" t
 norm : String -> Html String
 let norm = t => codeSpan "norm" t
 line : List (Html String) -> Html String
@@ -87,20 +87,21 @@ let line = content => div [ htmlClass "code-line" ] content
 viewTitle : Int -> Html String
 let viewTitle = idx =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Pura" ],
-    p [ htmlClass "subtitle" ] [ text "A UI-Oriented Functional Language" ],
-    p [] [ text "Bridging Compiler Theory and Frontend Application." ]
+    h1 [ htmlClass "title main-title" ] [ text "Pura" ],
+    p [ htmlClass "subtitle main-subtitle" ] [ text "UI-Oriented Functional Language" ],
+    div [ htmlClass "title-info" ] [
+        p [] [ text "Special Project on Information Media I" ],
+        p [] [ text "202513228 Atharva Timsina" ],
+        p [] [ text "Advisor: Prof. Hisashi Nakai" ]
+    ]
   ]
 
--- Slide 1 & 2: The Problem (Split into Steps)
-viewProblem : Int -> Html String
-let viewProblem = step =>
-  -- Use Stable wrapper for Step 2 so the Left column doesn't "blink"
-  let wrapper = if step == 2 then slideWrapperStable else slideWrapper in
-  
-  wrapper [
-    h1 [] [ text "Challenge: Runtime Instability" ],
-    p [ htmlClass "subtitle" ] [ text "Dynamic typing creates silent failures." ],
+-- Slide 1: The Problem (Part 1)
+viewProblemJS : Int -> Html String
+let viewProblemJS = idx =>
+  slideWrapper [
+    h1 [] [ text "Challenge: Runtime Fragility" ],
+    p [ htmlClass "subtitle" ] [ text "Silent failures caused by dynamic typing" ],
     div [ htmlClass "two-column" ] [
         div [] [
             p [] [ text "JavaScript (Runtime Error)" ],
@@ -108,16 +109,42 @@ let viewProblem = step =>
                 line [ kw "function", norm " calc(cart) {" ],
                 line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
                 line [ norm "  ", kw "for", norm " (", kw "let", norm " item ", kw "of", norm " cart.items) {" ],
-                line [ norm "    ", cmt "// BUG: \"10\" + 0 = \"010\"" ],
+                line [ norm "    ", redCmt "// BUG: \"10\" + 0 = \"010\"" ],
                 line [ norm "    total ", kw "+=", norm " item.price;" ],
                 line [ norm "  }" ],
                 line [ norm "  ", kw "return", norm " total;" ],
                 line [ norm "}" ]
             ]
         ],
-        -- Only visible in Step 2
-        div [ htmlClass (fragmentClass (step == 2)) ] [
-             p [] [ text "Meanwhile, in Pura..." ],
+        div [ htmlClass "hidden-block" ] [
+             p [] [ text "." ], 
+             div [ htmlClass "code-block" ] [ line [ norm " " ] ]
+        ]
+    ]
+  ]
+
+-- Slide 2: The Problem (Part 2)
+viewProblemPura : Int -> Html String
+let viewProblemPura = idx =>
+  slideWrapperStable [
+    h1 [] [ text "Challenge: Runtime Fragility" ],
+    p [ htmlClass "subtitle" ] [ text "Silent failures caused by dynamic typing" ],
+    div [ htmlClass "two-column" ] [
+        div [] [
+            p [] [ text "JavaScript (Runtime Error)" ],
+            div [ htmlClass "code-block" ] [
+                line [ kw "function", norm " calc(cart) {" ],
+                line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
+                line [ norm "  ", kw "for", norm " (", kw "let", norm " item ", kw "of", norm " cart.items) {" ],
+                line [ norm "    ", redCmt "// BUG: \"10\" + 0 = \"010\"" ],
+                line [ norm "    total ", kw "+=", norm " item.price;" ],
+                line [ norm "  }" ],
+                line [ norm "  ", kw "return", norm " total;" ],
+                line [ norm "}" ]
+            ]
+        ],
+        div [ htmlClass "fragment visible" ] [
+             p [] [ text "But in Pura..." ],
              div [ htmlClass "code-block" ] [
                 line [ kw "let", fn " calc", norm " ", kw "=", norm " total ", kw "=>", norm " price ", kw "=>" ],
                 line [ norm "  total ", kw "+", norm " price" ]
@@ -132,7 +159,7 @@ let viewProblem = step =>
     ]
   ]
 
--- Slide 3: PRE-REVEAL (Suspense Slide)
+-- Slide 3: Pre-Reveal
 viewPreReveal : Int -> Html String
 let viewPreReveal = idx =>
   slideWrapper [
@@ -142,27 +169,23 @@ let viewPreReveal = idx =>
     ]
   ]
 
--- Slide 4: THE REVEAL (Punchline + Link)
+-- Slide 4: Reveal
 viewReveal : Int -> Html String
 let viewReveal = idx =>
   slideWrapper [
     div [ htmlClass "fragment visible" ] [
-        h1 [ htmlClass "title reveal-title" ] [ text "This presentation is built with Pura." ],
-        p [] [ text "It is an application with state management using the MVU architecture." ],
+        h1 [ htmlClass "title reveal-title" ] [ text "This presentation is made with Pura." ],
+        p [] [ text "It is an application with state management using MVU architecture." ],
         div [ htmlClass "code-block reveal-code" ] [
-             line [ norm " " ],
              line [ kw "let", fn " viewReveal", norm " ", kw "=", norm " idx ", kw "=>" ],
              line [ norm "  slideWrapper [" ],
              line [ norm "    h1 [] [ text ", str "\"This presentation...\"", norm " ]" ],
              line [ norm "  ]" ]
         ],
-        
         div [ htmlClass "stats-container" ] [
             p [] [ text "JavaScript: 0 lines" ],
             p [] [ text "Runtime Errors: 0" ]
         ],
-
-        -- THE LINK
         div [ htmlClass "repo-link-container" ] [
             a [ htmlHref "https://github.com/Axarva/pura-compiler/tree/main/class_materials/final", htmlClass "repo-link" ] [
                 text "Check Source on GitHub" 
@@ -179,24 +202,22 @@ let viewTodoItem = item =>
 viewDemo : List String -> Html String
 let viewDemo = model =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Demonstration" ],
-    p [] [ text "The following application is running within the Pura Runtime." ],
+    h1 [ htmlClass "title" ] [ text "Live Demo" ],
+    p [] [ text "The following app is running on the Pura Runtime." ],
     div [ htmlClass "todo-container" ] [
       ul [] (mapTodos viewTodoItem (tail model))
     ],
     div [] [
-      button [ htmlOnClick "ADD_TODO", htmlClass "btn-primary" ] [ text "Add Task" ],
+      button [ htmlOnClick "ADD_TODO", htmlClass "btn-primary" ] [ text "+ Add Task" ],
       text " ", 
       button [ htmlOnClick "DEL_TODO", htmlClass "btn-secondary" ] [ text "Complete Top" ]
     ]
   ]
 
--- Slide 6 & 7: Comparison (Split into Steps)
-viewComparison : Int -> Html String
-let viewComparison = step =>
-  let wrapper = if step == 2 then slideWrapperStable else slideWrapper in
-
-  wrapper [
+-- Slide 6: Comparison (Part 1)
+viewComparisonJS : Int -> Html String
+let viewComparisonJS = idx =>
+  slideWrapper [
     h1 [] [ text "Comparative Analysis" ],
     div [ htmlClass "two-column" ] [
       div [] [
@@ -211,8 +232,33 @@ let viewComparison = step =>
           line [ norm "}" ]
         ]
       ],
-      -- Only visible in Step 2
-      div [ htmlClass (fragmentClass (step == 2)) ] [
+      div [ htmlClass "hidden-block" ] [
+         div [ htmlClass "col-header" ] [ text "." ],
+         div [ htmlClass "code-block" ] [ line [ norm " " ] ]
+      ]
+    ],
+    div [ htmlClass "hidden-block" ] [ p [] [ text "." ] ]
+  ]
+
+-- Slide 7: Comparison (Part 2)
+viewComparisonPura : Int -> Html String
+let viewComparisonPura = idx =>
+  slideWrapperStable [
+    h1 [] [ text "Comparative Analysis" ],
+    div [ htmlClass "two-column" ] [
+      div [] [
+        div [ htmlClass "col-header" ] [ text "JavaScript (Imperative)" ],
+        div [ htmlClass "code-block" ] [
+          line [ kw "function", fn " sum", norm "(list) {" ],
+          line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
+          line [ norm "  ", kw "for", norm " (", kw "let", norm " i", kw "=", norm "0; i<list.length; i++) {" ],
+          line [ norm "    total ", kw "+=", norm " list[i];" ],
+          line [ norm "  }" ],
+          line [ norm "  ", kw "return", norm " total;" ],
+          line [ norm "}" ]
+        ]
+      ],
+      div [ htmlClass "fragment visible" ] [
         div [ htmlClass "col-header" ] [ text "Pura (Declarative)" ],
         div [ htmlClass "code-block" ] [
           line [ kw "let", fn " sum", norm " ", kw "=", norm " list ", kw "=>" ],
@@ -223,9 +269,8 @@ let viewComparison = step =>
         ]
       ]
     ],
-    -- Conclusion text also appears in Step 2
-    div [ htmlClass (fragmentClass (step == 2)) ] [
-        p [] [ text "By writing 'definitions' instead of 'steps', we eliminate state management bugs." ]
+    div [ htmlClass "fragment visible" ] [
+        p [] [ text "By writing 'definitions' instead of 'steps', state bugs are eliminated." ]
     ]
   ]
 
@@ -234,58 +279,106 @@ viewInference : Int -> Html String
 let viewInference = idx =>
   slideWrapper [
     h1 [] [ text "Hindley-Milner Inference" ],
-    p [ htmlClass "subtitle" ] [ text "Compile-time correctness guarantees." ],
+    p [ htmlClass "subtitle" ] [ text "Correctness guaranteed at compile time" ],
     ul [] [
-      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "Inference + Contracts: Internals fully inferred, boundaries explicit." ],
-      li [ htmlClass (fragmentClass (idx >= 2)) ] [ text "Principal Types: Finds the most general type possible." ],
-      li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "Zero Runtime Errors: Well-typed programs cannot go wrong." ]
+      li [ htmlClass (fragmentClass (idx >= 1)) ] [ text "Inference + Contracts: Internals inferred, boundaries explicit" ],
+      li [ htmlClass (fragmentClass (idx >= 2)) ] [ text "Principal Types: Infers the most general type possible" ],
+      li [ htmlClass (fragmentClass (idx >= 3)) ] [ text "Type Safety: Well-typed programs do not go wrong" ]
     ]
   ]
 
--- Slide 9: Effects
-viewEffects : Int -> Html String
-let viewEffects = idx =>
-  slideWrapper [
+-- Slide 9-12: Effects (Step by Step)
+viewEffectsStep : Int -> Html String
+let viewEffectsStep = step =>
+  let wrapper = if step == 1 then slideWrapper else slideWrapperStable in
+  
+  wrapper [
     h1 [] [ text "Effect Management" ],
-    p [ htmlClass "subtitle" ] [ text "Explicit control over side effects." ],
+    -- p [ htmlClass "subtitle" ] [ text "Explicit control over external access" ],
+    
     ul [] [
-      li [ htmlClass "fragment visible" ] [ text "Unlike JavaScript, effects are explicit." ],
-      li [ htmlClass "fragment visible" ] [ text "Functions must declare required permissions." ]
+      li [ htmlClass "visible" ] [ text "Unlike JS or Python, side effects are explicit." ],
+      li [ htmlClass "visible" ] [ text "Functions must declare required 'permissions'." ]
     ],
-    div [ htmlClass "code-block" ] [
-      line [ cmt "-- 'main' requires specific permissions to run" ],
-      line [ kw "let", fn " main", norm " ", kw "=", norm " { ... }" ],
-      line [ kw "  REQUIRES", norm " ConsoleWrite, BrowserPrompt" ]
+    
+    div [ htmlClass "effects-grid" ] [
+        -- 1. Pure
+        div [ htmlClass (if step >= 1 then "effect-card visible" else "effect-card hidden-block") ] [
+            div [ htmlClass "col-header" ] [ text "1. Pure Function" ],
+            div [ htmlClass "code-block small-code" ] [
+                line [ cmt "-- Calculations with no side effects" ],
+                line [ kw "let", fn " double", norm " ", kw "=", norm " x ", kw "=>" ],
+                line [ norm "  x ", kw "*", norm " 2" ]
+            ]
+        ],
+        -- 2. Realistic Impure
+        div [ htmlClass (if step >= 1 then "effect-card visible" else "effect-card hidden-block") ] [
+            div [ htmlClass "col-header" ] [ text "2. Common Side Effects" ],
+            div [ htmlClass "code-block small-code" ] [
+                line [ cmt "-- Accessing the outside world (printing)" ],
+                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ", kw "=>" ],
+                line [ fn "  print", norm " msg" ]
+            ]
+        ],
+        -- 3. Funny Impure
+        div [ htmlClass (if step >= 2 then "effect-card fragment visible" else "effect-card hidden-block") ] [
+            div [ htmlClass "col-header" ] [ text "3. Dangerous Side Effects" ],
+            div [ htmlClass "code-block small-code" ] [
+                line [ cmt "-- International Side Effects" ],
+                line [ kw "let", fn " nuke", norm " ", kw "=", norm " () ", kw "=>" ],
+                line [ fn "  launchMissiles", norm " ()" ]    
+            ]
+        ],
+        -- 4. Pura Solution
+        div [ htmlClass (if step >= 2 then "effect-card fragment visible" else "effect-card hidden-block") ] [
+            div [ htmlClass "col-header" ] [ text "4. Pura Solution" ],
+            div [ htmlClass "code-block small-code" ] [
+                line [ cmt "-- Pura code declaring permissions" ],
+                line [ kw "let", fn " main", norm " ", kw "=", norm " { ... }" ],
+                line [ kw "  REQUIRES", norm " Console" ]
+            ]
+        ]
     ]
   ]
 
--- Slide 10: Roadmap
+-- Slide 13: Roadmap
 viewRoadmap : Int -> Html String
 let viewRoadmap = idx =>
   slideWrapper [
-    h1 [] [ text "Future Work" ],
+    h1 [] [ text "Future Roadmap" ],
     ul [] [
-      li [ htmlClass "fragment visible" ] [ text "Algebraic Effects (Koka-inspired control flow)" ],
-      li [ htmlClass "fragment visible" ] [ text "WebAssembly (Wasm) Compilation Target" ],
+      li [ htmlClass "fragment visible" ] [ text "Algebraic Effects" ],
+      li [ htmlClass "fragment visible" ] [ text "WebAssembly (Wasm) Backend" ],
       li [ htmlClass "fragment visible" ] [ text "Standard Library Expansion" ]
     ]
   ]
 
--- Slide 11: Conclusion
-viewConclusion : Int -> Html String
-let viewConclusion = idx =>
+-- Slide 14: Summary (Matome)
+viewSummary : Int -> Html String
+let viewSummary = idx =>
   slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Conclusion" ],
-    p [ htmlClass "subtitle" ] [ text "Pura demonstrates that rigorous type theory can exist" ],
-    p [ htmlClass "subtitle" ] [ text "alongside modern, interactive UI development." ]
-  ]
-
--- Slide 12: Thank You
-viewEnd : Int -> Html String
-let viewEnd = idx =>
-  slideWrapper [
-    h1 [ htmlClass "title" ] [ text "Thank You" ],
-    p [] [ text "Built with Pura Compiler 2025" ]
+    h1 [ htmlClass "title" ] [ text "Summary" ],
+    
+    div [ htmlClass "two-column" ] [
+      div [] [
+        div [ htmlClass "col-header center-text" ] [ text "Problem & Solution" ],
+        ul [] [
+          li [ htmlClass "fragment visible" ] [ text "Eliminated 'silent failures' of dynamic typing" ],
+          li [ htmlClass "fragment visible" ] [ text "Prevented state bugs with declarative code" ],
+          li [ htmlClass "fragment visible" ] [ text "More readable expression than JavaScript" ]
+        ]
+      ],
+      div [] [
+        div [ htmlClass "col-header center-text" ] [ text "Tech & Proof" ],
+        ul [] [
+          li [ htmlClass "fragment visible" ] [ text "Safety via Inference & Effect System" ],
+          li [ htmlClass "fragment visible" ] [ text "UI construction with MVU Architecture" ],
+          li [ htmlClass "fragment visible" ] [ text "Proof: This slide deck is a Pura app" ]
+        ]
+      ]
+    ],
+    
+    p [ htmlClass "copyright" ] [ text "Built with Pura Compiler 2025" ]
   ]
 
 -- 6. MAIN DISPATCH ------------------------------------------------------------
@@ -293,23 +386,23 @@ view : List String -> Html String
 let view = model =>
   let idx = parseInt (head model) in
   
-  -- Mapped consecutive indices to Steps (e.g., 1->Problem1, 2->Problem2)
   if idx == 0 then viewTitle idx
-  else if idx == 1 then viewProblem 1    -- Step 1
-  else if idx == 2 then viewProblem 2    -- Step 2
+  else if idx == 1 then viewProblemJS idx
+  else if idx == 2 then viewProblemPura idx
   else if idx == 3 then viewPreReveal idx
   else if idx == 4 then viewReveal idx
   else if idx == 5 then viewDemo model
-  else if idx == 6 then viewComparison 1   -- Step 1
-  else if idx == 7 then viewComparison 2   -- Step 2
+  else if idx == 6 then viewComparisonJS idx
+  else if idx == 7 then viewComparisonPura idx
   else if idx == 8 then viewInference 3
-  else if idx == 9 then viewEffects idx
-  else if idx == 10 then viewRoadmap idx
-  else if idx == 11 then viewConclusion idx
-  else viewEnd idx
+  -- Split Effects slide into 4 steps
+  else if idx == 9 then viewEffectsStep 1
+  else if idx == 10 then viewEffectsStep 2
+  else if idx == 11 then viewRoadmap idx
+  else viewSummary idx
 
 -- 7. ENTRY POINT --------------------------------------------------------------
 main : Unit
 let main = {
-  print "Starting University Presentation (EN)..."
+  print "Starting Presentation..."
 } REQUIRES ConsoleWrite, BrowserPrompt
