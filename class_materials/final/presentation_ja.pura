@@ -307,8 +307,8 @@ let viewEffectsStep = step =>
             div [ htmlClass "col-header" ] [ text "副作用の例" ],
             div [ htmlClass "code-block small-code" ] [
                 line [ cmt "-- 画面で文字を表示する外部世界へのアクセス" ],
-                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ", kw "=>" ],
-                line [ fn "  write", norm " log.txt" ],
+                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ",　kw "=>", norm " filename ", kw "=>" ],
+                line [ fn "  write", norm " msg", norm " filename" ],
                 line [ fn "  print", norm " msg" ]
             ]
         ],
@@ -318,8 +318,8 @@ let viewEffectsStep = step =>
             div [ htmlClass "col-header" ] [ text " Pura の解決策" ],
             div [ htmlClass "code-block small-code" ] [
                 line [ cmt "-- 権限を宣言した Pura コード" ],
-                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ", kw "=>" ],
-                line [ fn "  write", norm " log.txt" ],
+                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ",　kw "=>", norm " filename ", kw "=>" ],
+                line [ fn "  write", norm " msg", norm " filename" ],
                 line [ fn "  print", norm " msg" ],
                 line [ kw "  REQUIRES", norm " ConsoleWrite, FileIO" ]
             ]
@@ -331,8 +331,8 @@ let viewEffectsStep = step =>
             -- div [ htmlClass "col-header" ] [ text "2. 危険な副作用" ],
             div [ htmlClass "code-block small-code" ] [
                 line [ cmt "-- 国際的副作用" ],
-                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ", kw "=>" ],
-                line [ fn "  write", norm " log.txt" ],
+                line [ kw "let", fn " badLog", norm " ", kw "=", norm " msg ",　kw "=>", norm " filename ", kw "=>" ],
+                line [ fn "  write", norm " msg", norm " filename" ],
                 line [ fn "  launchMissiles", norm " ()" ]    
             ]
         ],
@@ -342,8 +342,8 @@ let viewEffectsStep = step =>
             -- div [ htmlClass "col-header" ] [ text "a " ],
             div [ htmlClass "code-block small-code" ] [
                 line [ cmt "-- エフェクトが安全装置として働く例" ],
-                line [ kw "let", fn " badLog", norm " ", kw "=", norm " msg ", kw "=>" ],
-                line [ fn "  write", norm " log.txt" ],
+                line [ kw "let", fn " badLog", norm " ", kw "=", norm " msg ",　kw "=>", norm " filename ", kw "=>" ],
+                line [ fn "  write", norm " msg", norm " filename" ],
                 line [ fn "  launchMissiles", norm " ()",　redCmt "  -- エラー：許可されていない関数の呼び出し" ],
                 line [ kw "  REQUIRES", norm " FileIO" ]
             ]
@@ -368,6 +368,8 @@ viewSummary : Int -> Html String
 let viewSummary = idx =>
   slideWrapper [
     h1 [ htmlClass "title" ] [ text "まとめ" ],
+    p [ htmlClass "subtitle last-subtitle" ] [ text "関数型言語 Pura を作りました！" ],
+
     
     div [ htmlClass "two-column" ] [
       div [] [

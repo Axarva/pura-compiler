@@ -91,6 +91,13 @@ h1.title {
     margin-bottom: 3rem;
 }
 
+.last-subtitle {
+    /* font-size: clamp(1.5rem, 2.5vw, 2.5rem); */
+    color: #111;
+    font-weight: 600;
+    /* margin-bottom: 3rem; */
+}
+
 /* 125% Scale for body text */
 p, li {
     font-size: clamp(1.4rem, 1.9vw, 2.2rem);
