@@ -74,15 +74,7 @@ function mount(selector, program) {
     root.innerHTML = ''; // Simple and inefficient, but works for a demo!
     root.appendChild(renderNode(newView));
   }
-  // --- KEYBOARD LISTENER ---
-   document.addEventListener('keydown', (e) => {
-     if (e.key === 'ArrowRight' || e.key === ' ') {
-        dispatch("NEXT");
-     }
-     if (e.key === 'ArrowLeft') {
-        dispatch("PREV");
-     }
-   });
+
   render();
 }
 

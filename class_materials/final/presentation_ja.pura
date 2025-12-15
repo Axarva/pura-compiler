@@ -88,7 +88,7 @@ viewTitle : Int -> Html String
 let viewTitle = idx =>
   slideWrapper [
     h1 [ htmlClass "title main-title" ] [ text "Pura" ],
-    p [ htmlClass "subtitle main-subtitle" ] [ text "UI指向関数型言語" ],
+    p [ htmlClass "subtitle main-subtitle" ] [ text "UI 指向関数型言語" ],
     div [ htmlClass "title-info" ] [
         p [] [ text "情報メディア特別演習 I" ],
         p [] [ text "202513228　ティムシナ　アサルヴァ" ],
@@ -104,7 +104,7 @@ let viewProblemJS = idx =>
     p [ htmlClass "subtitle" ] [ text "動的型付けが引き起こす静かなる失敗" ],
     div [ htmlClass "two-column" ] [
         div [] [
-            p [] [ text "JavaScriptの場合 (実行時エラー)" ],
+            p [] [ text "JavaScript の場合 (実行時エラー)" ],
             div [ htmlClass "code-block" ] [
                 line [ kw "function", norm " calc(cart) {" ],
                 line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
@@ -131,7 +131,7 @@ let viewProblemPura = idx =>
     p [ htmlClass "subtitle" ] [ text "動的型付けが引き起こす静かなる失敗" ],
     div [ htmlClass "two-column" ] [
         div [] [
-            p [] [ text "JavaScriptの場合 (実行時エラー)" ],
+            p [] [ text "JavaScript の場合 (実行時エラー)" ],
             div [ htmlClass "code-block" ] [
                 line [ kw "function", norm " calc(cart) {" ],
                 line [ norm "  ", kw "let", norm " total ", kw "=", norm " 0;" ],
@@ -144,7 +144,7 @@ let viewProblemPura = idx =>
             ]
         ],
         div [ htmlClass "fragment visible" ] [
-             p [] [ text "一方、Puraで同じコードを書くと..." ],
+             p [] [ text "一方、Pura で同じコードを書くと..." ],
              div [ htmlClass "code-block" ] [
                 line [ kw "let", fn " calc", norm " ", kw "=", norm " total ", kw "=>", norm " price ", kw "=>" ],
                 line [ norm "  total ", kw "+", norm " price" ]
@@ -174,7 +174,7 @@ viewReveal : Int -> Html String
 let viewReveal = idx =>
   slideWrapper [
     div [ htmlClass "fragment visible" ] [
-        h1 [ htmlClass "title reveal-title" ] [ text "このプレゼン自体が Pura製 です。" ],
+        h1 [ htmlClass "title reveal-title" ] [ text "このプレゼン自体が Pura 製です。" ],
         p [] [ text "MVU アーキテクチャを使った状態管理機能付きアプリです。" ],
         div [ htmlClass "code-block reveal-code" ] [
              line [ kw "let", fn " viewReveal", norm " ", kw "=", norm " idx ", kw "=>" ],
@@ -297,45 +297,55 @@ let viewEffectsStep = step =>
     -- p [ htmlClass "subtitle" ] [ text "外部世界へのアクセスを明示的に制御" ],
     
     ul [] [
-      li [ htmlClass "visible" ] [ text "JavaScriptやPythonとは異なり、副作用は明示的です。" ],
+      li [ htmlClass "visible" ] [ text "JavaScript や Python とは異なり、副作用は明示的です。" ],
       li [ htmlClass "visible" ] [ text "関数は必要な「権限」を宣言しなければなりません。" ]
     ],
     
     div [ htmlClass "effects-grid" ] [
-        -- 1. Pure
+        -- 1. Realistic Impure
         div [ htmlClass (if step >= 1 then "effect-card visible" else "effect-card hidden-block") ] [
-            div [ htmlClass "col-header" ] [ text "1. 純粋関数" ],
-            div [ htmlClass "code-block small-code" ] [
-                line [ cmt "-- xの入力に対して計算を行いその結果を出す（単射）" ],
-                line [ kw "let", fn " double", norm " ", kw "=", norm " x ", kw "=>" ],
-                line [ norm "  x ", kw "*", norm " 2" ]
-            ]
-        ],
-        -- 2. Realistic Impure
-        div [ htmlClass (if step >= 1 then "effect-card visible" else "effect-card hidden-block") ] [
-            div [ htmlClass "col-header" ] [ text "2. 一般的な副作用" ],
+            div [ htmlClass "col-header" ] [ text "副作用の例" ],
             div [ htmlClass "code-block small-code" ] [
                 line [ cmt "-- 画面で文字を表示する外部世界へのアクセス" ],
                 line [ kw "let", fn " log", norm " ", kw "=", norm " msg ", kw "=>" ],
+                line [ fn "  write", norm " log.txt" ],
                 line [ fn "  print", norm " msg" ]
             ]
         ],
-        -- 3. Funny Impure
+
+        -- Pura Solution
         div [ htmlClass (if step >= 2 then "effect-card fragment visible" else "effect-card hidden-block") ] [
-            div [ htmlClass "col-header" ] [ text "3. 危険な副作用" ],
+            div [ htmlClass "col-header" ] [ text " Pura の解決策" ],
+            div [ htmlClass "code-block small-code" ] [
+                line [ cmt "-- 権限を宣言した Pura コード" ],
+                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ", kw "=>" ],
+                line [ fn "  write", norm " log.txt" ],
+                line [ fn "  print", norm " msg" ],
+                line [ kw "  REQUIRES", norm " ConsoleWrite, FileIO" ]
+            ]
+        ],
+        
+        
+        -- 2. Funny Impure
+        div [ htmlClass (if step >= 1 then "effect-card visible" else "effect-card hidden-block") ] [
+            -- div [ htmlClass "col-header" ] [ text "2. 危険な副作用" ],
             div [ htmlClass "code-block small-code" ] [
                 line [ cmt "-- 国際的副作用" ],
-                line [ kw "let", fn " nuke", norm " ", kw "=", norm " () ", kw "=>" ],
+                line [ kw "let", fn " log", norm " ", kw "=", norm " msg ", kw "=>" ],
+                line [ fn "  write", norm " log.txt" ],
                 line [ fn "  launchMissiles", norm " ()" ]    
             ]
         ],
-        -- 4. Pura Solution
+
+        -- Pura Solution 2
         div [ htmlClass (if step >= 2 then "effect-card fragment visible" else "effect-card hidden-block") ] [
-            div [ htmlClass "col-header" ] [ text "4. Puraの解決策" ],
+            -- div [ htmlClass "col-header" ] [ text "a " ],
             div [ htmlClass "code-block small-code" ] [
-                line [ cmt "-- 権限を宣言したPuraコード" ],
-                line [ kw "let", fn " main", norm " ", kw "=", norm " { ... }" ],
-                line [ kw "  REQUIRES", norm " Console" ]
+                line [ cmt "-- エフェクトが安全装置として働く例" ],
+                line [ kw "let", fn " badLog", norm " ", kw "=", norm " msg ", kw "=>" ],
+                line [ fn "  write", norm " log.txt" ],
+                line [ fn "  launchMissiles", norm " ()",　redCmt "  -- エラー：許可されていない関数の呼び出し" ],
+                line [ kw "  REQUIRES", norm " FileIO" ]
             ]
         ]
     ]
@@ -365,20 +375,20 @@ let viewSummary = idx =>
         ul [] [
           li [ htmlClass "fragment visible" ] [ text "動的型付けで「静かなる失敗」排除" ],
           li [ htmlClass "fragment visible" ] [ text "宣言的記述で状態管理バグを防ぐ" ],
-          li [ htmlClass "fragment visible" ] [ text "JavaScriptより読みやすい表現" ]
+          li [ htmlClass "fragment visible" ] [ text "JavaScript より読みやすい表現" ]
         ]
       ],
       div [] [
         div [ htmlClass "col-header center-text" ] [ text "技術と実証" ],
         ul [] [
           li [ htmlClass "fragment visible" ] [ text "型推論とエフェクトシステムで安全性" ],
-          li [ htmlClass "fragment visible" ] [ text "MVUアーキテクチャでのUI構築を実現" ],
-          li [ htmlClass "fragment visible" ] [ text "実証：このスライド自体Pura製アプリ" ]
+          li [ htmlClass "fragment visible" ] [ text "MVU アーキテクチャでの UI 構築を実現" ],
+          li [ htmlClass "fragment visible" ] [ text "実証：このスライド自体 Pura 製アプリ" ]
         ]
       ]
     ],
     
-    p [ htmlClass "copyright" ] [ text "Built with Pura Compiler 2025" ]
+    p [ htmlClass "copyright" ] [ text "Built with Pura 2025" ]
   ]
 
 -- 6. MAIN DISPATCH ------------------------------------------------------------
