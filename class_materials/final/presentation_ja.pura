@@ -330,7 +330,7 @@ let viewEffectsStep = step =>
         div [ htmlClass (if step >= 1 then "effect-card visible" else "effect-card hidden-block") ] [
             -- div [ htmlClass "col-header" ] [ text "2. 危険な副作用" ],
             div [ htmlClass "code-block small-code" ] [
-                line [ cmt "-- 国際的副作用" ],
+                line [ cmt "-- 国際問題的な副作用" ],
                 line [ kw "let", fn " badLog", norm " ", kw "=", norm " msg ",　kw "=>", norm " filename ", kw "=>" ],
                 line [ fn "  write", norm " msg", norm " filename" ],
                 line [ fn "  launchMissiles", norm " ()" ]    
