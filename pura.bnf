@@ -13,9 +13,11 @@
 
 <type_declaration> ::= <identifier> ":" <type>
 
-<function_definition> ::= "let" <identifier> "=" <param_list> <body> <requires_clause>?
+# Variable and function definitions share this syntax.
+# A variable is simply a definition with zero parameters.
+<function_definition> ::= "let" <identifier> "=" <parameter>* <body> <requires_clause>?
 
-<param_list> ::= ( <identifier> "=>" )*
+<parameter> ::= <identifier> "=>"
 
 <body> ::= <block> | <expr>
 
@@ -106,4 +108,3 @@
 <bin_op>         ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&&" | "||"
 
 <effect> ::= "ConsoleWrite" | "FileIO" | "Network" | "BrowserPrompt"
-
