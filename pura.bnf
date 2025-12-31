@@ -1,13 +1,11 @@
-# Formal Grammar for the Pura Language in Backus-Naur Form (BNF)
-
 # =================================
 # 1. Top-Level Program Structure
 # =================================
 
-<program> ::= <top_level_declaration>+
+<program> ::= <top_level_declaration>*
 
 <top_level_declaration> ::= <type_declaration>
-                          | <let_binding>
+                          | <function_definition>
 
 # =================================
 # 2. Declarations
@@ -15,93 +13,97 @@
 
 <type_declaration> ::= <identifier> ":" <type>
 
-<let_binding>      ::= "let" <identifier> "=" <curried_param>* <body> <requires_clause>?
+<function_definition> ::= "let" <identifier> "=" <param_list> <body> <requires_clause>?
 
-<curried_param>    ::= <identifier> "=>"
+<param_list> ::= ( <identifier> "=>" )*
 
-<body>             ::= <block> | <expr>
+<body> ::= <block> | <expr>
 
-<block>            ::= "{" <expr>* "}"
-
-<requires_clause>  ::= "REQUIRES" <effect> ("," <effect>)*
+<requires_clause> ::= "REQUIRES" <effect> ( "," <effect> )*
 
 # =================================
 # 3. Type System
 # =================================
 
-<type>         ::= <basic_type> ( "->" <type> )?
+<type> ::= <basic_type> ( "->" <type> )?
 
-<basic_type>   ::= "Int" | "String" | "Bool" | "Unit" | <list_type> | "(" <type> ")"
+<basic_type> ::= "Int" 
+               | "String" 
+               | "Bool" 
+               | "Unit" 
+               | "Msg"
+               | <list_type> 
+               | <html_type> 
+               | <attr_type>
+               | "(" <type> ")"
 
-<list_type>    ::= "List" <basic_type>
-
-
+<list_type>      ::= "List" <basic_type>
+<html_type>      ::= "Html" <basic_type>
+<attr_type>      ::= "Attribute" <basic_type>
 
 # =================================
-# 4. Expressions (with Operator Precedence)
+# 4. Expressions (Precedence: Lowest to Highest)
 # =================================
-
-# The entry point for any expression, starting with the lowest precedence. 
-# Note that the <term> cascades down to each expr from <unary_expr>.
 
 <expr> ::= <or_expr>
 
-# Precedence Level 1: Logical OR (left-associative)
+# Level 1: Logical OR
 <or_expr> ::= <and_expr> ( "||" <and_expr> )*
 
-# Precedence Level 2: Logical AND (left-associative)
+# Level 2: Logical AND
 <and_expr> ::= <comparison_expr> ( "&&" <comparison_expr> )*
 
-# Precedence Level 3: Comparison (non-associative)
+# Level 3: Comparison
 <comparison_expr> ::= <additive_expr> ( <comp_op> <additive_expr> )*
+<comp_op> ::= "==" | "!=" | "<" | ">" | "<=" | ">="
 
-# Precedence Level 4: Addition/Subtraction (left-associative)
+# Level 4: Addition / Subtraction
 <additive_expr> ::= <concat_expr> ( ( "+" | "-" ) <concat_expr> )*
 
-# Precedence Level 5: String Concatenation (left-associative)
+# Level 5: String Concatenation
 <concat_expr> ::= <multiplicative_expr> ( "++" <multiplicative_expr> )*
 
-# Precedence Level 6: Multiplication/Division (left-associative)
+# Level 6: Multiplication / Division
 <multiplicative_expr> ::= <unary_expr> ( ( "*" | "/" ) <unary_expr> )*
 
-# Precedence Level 7: Unary Operators (right-associative)
+# Level 7: Unary Operators
 <unary_expr> ::= "!" <unary_expr> | <application>
 
-# Precedence Level 8: Function Application (left-associative)
+# Level 8: Function Application (Curried)
 <application> ::= <atom>+
 
-# An <atom> is the new base case for expressions
+# Level 9: Atomic Expressions (Base Case)
 <atom> ::= <literal>
          | <variable>
+         | <if_expr>
+         | <let_expr>
+         | <block>
          | <do_block>
          | "(" <expr> ")"
+         | "(" <bin_op> ")"
 
 # =================================
-# 5. Terms and Literals (Highest Precedence)
+# 5. Sub-Expressions and Literals
 # =================================
 
-# A <term> is an atomic part of an expression.
-<term> ::= <call>
-         | <list_literal>
-         | <do_block>
-         | <variable>
-         | <string_literal>
-         | <int_literal>
-         | <bool_literal>
-         | "(" <expr> ")"
+<if_expr>  ::= "if" <expr> "then" <expr> "else" <expr>
 
-<call> ::= <identifier> "(" ( <expr> ("," <expr>)* )? ")"
+<let_expr> ::= "let" <identifier> "=" <expr> "in" <expr>
 
-<do_block> ::= "do" <block>
+<block>    ::= "{" ( <expr> ";" )* "}"
 
-<list_literal> ::= "[" ( <expr> ("," <expr>)* )? "]"
+<do_block> ::= "do" "{" <expr>* "}"
 
-<variable> ::= <identifier>
+<literal> ::= <int_literal> 
+            | <string_literal> 
+            | <bool_literal> 
+            | <list_literal> 
+            | <unit_literal>
 
-<string_literal> ::= '"' <char>* '"'
+<unit_literal>   ::= "()"
+<list_literal>   ::= "[" ( <expr> ("," <expr>)* )? "]"
+<bool_literal>   ::= "True" | "False"
+<bin_op>         ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&&" | "||"
 
-<int_literal> ::= <digit>+
+<effect> ::= "ConsoleWrite" | "FileIO" | "Network" | "BrowserPrompt"
 
-<bool_literal> ::= "True" | "False"
-
-# Note: <identifier>, <char>, and <digit> are typically defined by the lexer.
